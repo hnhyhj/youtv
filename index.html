@@ -36,6 +36,7 @@ input{font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1px sol
 label{display:flex;gap:8px;align-items:center}
 a{color:var(--accent)}
 .ver{font-size:13px;opacity:.7}
+#probe{position:fixed;left:-10px;top:-10px;width:1px;height:1px;opacity:0;pointer-events:none}
 @media(max-width:860px){.wrap{grid-template-columns:1fr}.side{order:2}}
 </style>
 </head>
@@ -59,7 +60,7 @@ a{color:var(--accent)}
         <div class="hint" id="addMsg"></div>
       </form>
     </details>
-    <p class="hint ver">版本 v0.5 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.6 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -106,6 +107,9 @@ let pending = null;      // 等待恢复的播放位置 {videoId, time}
 let usingAll = false;    // 当前频道是否已退回到“全部上传”
 let errorCount = 0;
 let hasPlayed = false;   // 这次调台后是否已经放出过视频
+let checkedNewest = false;  // 这次调台后是否已经检查过“有没有新视频”
+let freshAvailable = false; // 后台检查发现了新视频，等当前视频播完就切过去
+let lastVideoId = "";       // 正在播的视频 ID，用来判断是否换到了下一个视频
 
 function buildChannels() {
   channels = [];
@@ -148,6 +152,9 @@ function tune(i) {
   usingAll = c.all;
   errorCount = 0;
   hasPlayed = false;
+  checkedNewest = false;
+  freshAvailable = false;
+  lastVideoId = "";
   pending = load("sportsTV.pos." + c.id, null);
   setNow("正在调台…（如果有广告，会先播广告）");
   makePlayer(playlistId(c, usingAll));
@@ -173,27 +180,95 @@ function makePlayer(list) {
 }
 
 function onState(e) {
-  if (e.data === YT.PlayerState.PLAYING) {
-    hasPlayed = true;
-    errorCount = 0;
-    const data = player.getVideoData();
-    if (pending) {
-      if (data.video_id === pending.videoId) {
-        if (pending.time > 5) player.seekTo(pending.time, true);
-        pending = null;
-      } else {
-        const ids = player.getPlaylist() || [];
-        let k = -1;
-        for (let i = 0; i < ids.length; i++) {
-          if (ids[i] === pending.videoId) { k = i; break; }
-        }
-        if (k === -1) pending = null;
-        else player.playVideoAt(k);
+  if (e.data !== YT.PlayerState.PLAYING) return;
+  hasPlayed = true;
+  errorCount = 0;
+  const c = channels[current];
+  const data = player.getVideoData();
+
+  // 调台后第一次放出视频：看列表最前面是不是没见过的新视频
+  if (!checkedNewest) {
+    checkedNewest = true;
+    const ids = player.getPlaylist() || [];
+    if (ids.length > 0) {
+      const known = load("sportsTV.newest." + c.id, null);
+      if (known !== null && ids[0] !== known) {
+        pending = null;   // 有新视频：不接着上次看，从最新的开始（现在正好在第一个）
+      }
+      save("sportsTV.newest." + c.id, ids[0]);
+    }
+  }
+
+  // 已经换到下一个视频，而后台发现过新视频：重建播放器，从最新的开始播
+  if (freshAvailable && lastVideoId !== "" && data.video_id !== lastVideoId) {
+    freshAvailable = false;
+    pending = null;
+    hasPlayed = false;
+    checkedNewest = false;
+    lastVideoId = "";
+    setNow("有新视频，正在切换到最新的…");
+    makePlayer(playlistId(c, usingAll));
+    return;
+  }
+  lastVideoId = data.video_id;
+
+  if (pending) {
+    if (data.video_id === pending.videoId) {
+      if (pending.time > 5) player.seekTo(pending.time, true);
+      pending = null;
+    } else {
+      const ids = player.getPlaylist() || [];
+      let k = -1;
+      for (let i = 0; i < ids.length; i++) {
+        if (ids[i] === pending.videoId) { k = i; break; }
+      }
+      if (k === -1) pending = null;
+      else player.playVideoAt(k);
+    }
+  }
+  setNow(data.title);
+}
+
+// 每 10 分钟在后台悄悄检查一次当前台有没有新视频。
+// 做法：建一个看不见、不播放的小播放器读取同一个列表，看最前面的视频变没变。
+// 发现新视频不会打断正在看的视频，等它播完换到下一个时再切到最新的。
+function checkForNew() {
+  if (current < 0 || !hasPlayed || freshAvailable) return;
+  const c = channels[current];
+  const known = load("sportsTV.newest." + c.id, null);
+  let box = document.getElementById("probe");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "probe";
+    document.body.appendChild(box);
+  }
+  const probe = new YT.Player("probe", {
+    width: 1,
+    height: 1,
+    playerVars: { listType: "playlist", list: playlistId(c, usingAll), autoplay: 0, mute: 1 },
+    events: {
+      onReady: function () {
+        let tries = 0;
+        const timer = setInterval(function () {
+          tries = tries + 1;
+          const ids = probe.getPlaylist ? probe.getPlaylist() : null;
+          if (ids && ids.length > 0) {
+            clearInterval(timer);
+            // 检查期间没有换台，并且最前面的视频变了，才算有新视频
+            if (current >= 0 && channels[current].id === c.id && known !== null && ids[0] !== known) {
+              freshAvailable = true;
+            }
+            probe.destroy();
+          } else if (tries >= 15) {
+            clearInterval(timer);
+            probe.destroy();
+          }
+        }, 1000);
       }
     }
-    setNow(data.title);
-  }
+  });
 }
+setInterval(checkForNew, 10 * 60 * 1000);
 
 // 有些视频不允许在外部网页播放，或在本地区不能看：自动跳到下一个
 function onError(e) {
