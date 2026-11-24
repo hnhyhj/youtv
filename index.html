@@ -36,6 +36,8 @@ input{font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1px sol
 label{display:flex;gap:8px;align-items:center}
 a{color:var(--accent)}
 .ver{font-size:13px;opacity:.7}
+.resume{padding:22px 36px;border:0;border-radius:16px;background:var(--accent);color:#111;font:inherit;font-size:28px;font-weight:700;cursor:pointer}
+.resume:focus-visible{outline:4px solid var(--ink)}
 #probe{position:fixed;left:-10px;top:-10px;width:1px;height:1px;opacity:0;pointer-events:none}
 @media(max-width:860px){.wrap{grid-template-columns:1fr}.side{order:2}}
 </style>
@@ -60,7 +62,7 @@ a{color:var(--accent)}
         <div class="hint" id="addMsg"></div>
       </form>
     </details>
-    <p class="hint ver">版本 v0.6 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.7 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -156,6 +158,7 @@ function tune(i) {
   freshAvailable = false;
   lastVideoId = "";
   pending = load("sportsTV.pos." + c.id, null);
+  save("sportsTV.lastChannel", c.id);
   setNow("正在调台…（如果有广告，会先播广告）");
   makePlayer(playlistId(c, usingAll));
 }
@@ -192,15 +195,18 @@ function onState(e) {
     const ids = player.getPlaylist() || [];
     if (ids.length > 0) {
       const known = load("sportsTV.newest." + c.id, null);
-      if (known !== null && ids[0] !== known) {
-        pending = null;   // 有新视频：不接着上次看，从最新的开始（现在正好在第一个）
+      const hasNew = known !== null && ids[0] !== known;
+      if (hasNew && pending) {
+        // 有新视频，但上次的视频还没看完：先接着看完，看完再切到最新的
+        freshAvailable = true;
+      } else {
+        save("sportsTV.newest." + c.id, ids[0]);
       }
-      save("sportsTV.newest." + c.id, ids[0]);
     }
   }
 
   // 已经换到下一个视频，而后台发现过新视频：重建播放器，从最新的开始播
-  if (freshAvailable && lastVideoId !== "" && data.video_id !== lastVideoId) {
+  if (freshAvailable && !pending && lastVideoId !== "" && data.video_id !== lastVideoId) {
     freshAvailable = false;
     pending = null;
     hasPlayed = false;
@@ -222,8 +228,15 @@ function onState(e) {
       for (let i = 0; i < ids.length; i++) {
         if (ids[i] === pending.videoId) { k = i; break; }
       }
-      if (k === -1) pending = null;
-      else player.playVideoAt(k);
+      if (k === -1) {
+        pending = null;
+        if (freshAvailable) {
+          freshAvailable = false;
+          save("sportsTV.newest." + c.id, ids[0]);
+        }
+      } else {
+        player.playVideoAt(k);
+      }
     }
   }
   setNow(data.title);
@@ -361,6 +374,19 @@ document.getElementById("addForm").addEventListener("submit", function (e) {
 
 buildChannels();
 renderList();
+
+// 打开网页时：如果上次看过某个台，显示“继续观看”大按钮。
+// 浏览器一般不允许网页没被点击就自动带声音播放，所以需要点一下。
+const lastId = load("sportsTV.lastChannel", null);
+let lastIndex = -1;
+for (let i = 0; i < channels.length; i++) {
+  if (channels[i].id === lastId) { lastIndex = i; break; }
+}
+if (lastIndex >= 0) {
+  const msgBox = document.getElementById("msg");
+  msgBox.innerHTML = '<button class="resume" id="resume">▶ 继续观看：' + esc(channels[lastIndex].name) + '</button>';
+  document.getElementById("resume").onclick = function () { tune(lastIndex); };
+}
 }
 </script>
 <script src="https://www.youtube.com/iframe_api"></script>
