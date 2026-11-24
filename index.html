@@ -72,7 +72,7 @@ h2{margin:6px 0 10px;font-size:22px}
       </form>
     </details>
     <div class="hint" id="blockedInfo"></div>
-    <p class="hint ver">版本 v0.8 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.9 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -276,6 +276,24 @@ function onState(e) {
   renderProgram();
 }
 
+// 换视频时 YouTube 常常先插广告，广告期间不会触发“正在播放”，
+// 所以每 2 秒检查一次：列表位置或播放状态变了，就刷新标题和节目单。
+let shownIdx = -1;
+let shownPlaying = false;
+setInterval(function () {
+  if (!player || !player.getPlaylistIndex || !player.getPlayerState || current < 0) return;
+  const idx = player.getPlaylistIndex();
+  const playingNow = player.getPlayerState() === YT.PlayerState.PLAYING;
+  if (idx === shownIdx && playingNow === shownPlaying) return;
+  shownIdx = idx;
+  shownPlaying = playingNow;
+  if (!playingNow) {
+    const data = player.getVideoData();
+    if (data && data.title) setNow("即将播放：" + data.title);
+  }
+  renderProgram();
+}, 2000);
+
 function isBlocked(id) {
   for (let i = 0; i < blocked.length; i++) {
     if (blocked[i] === id) return true;
@@ -292,6 +310,7 @@ function renderProgram() {
   let idx = player.getPlaylistIndex();
   if (idx < 0) idx = 0;
 
+  const playingNow = player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING;
   let html = "";
   let shown = 0;
   const missing = [];
@@ -303,7 +322,7 @@ function renderProgram() {
     if (title === undefined) missing.push(id);
     html += '<button class="item' + (step === 0 ? ' on' : '') + '" data-k="' + k + '">' +
       '<img src="https://i.ytimg.com/vi/' + esc(id) + '/mqdefault.jpg" alt="" loading="lazy">' +
-      '<span>' + (step === 0 ? '<small>正在播放</small>' : '') + esc(!title ? "（正在读取标题…）" : title) + '</span>' +
+      '<span>' + (step === 0 ? '<small>' + (playingNow ? '正在播放' : '即将播放（如有广告会先播广告）') + '</small>' : '') + esc(!title ? "（正在读取标题…）" : title) + '</span>' +
       '</button>';
     shown = shown + 1;
   }
