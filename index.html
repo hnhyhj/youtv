@@ -59,7 +59,7 @@ a{color:var(--accent)}
         <div class="hint" id="addMsg"></div>
       </form>
     </details>
-    <p class="hint ver">版本 v0.4 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.5 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -167,7 +167,7 @@ function makePlayer(list) {
     document.getElementById("screen").prepend(el);
   }
   player = new YT.Player("player", {
-    playerVars: { listType: "playlist", list: list, autoplay: 1, rel: 0, playsinline: 1 },
+    playerVars: { listType: "playlist", list: list, autoplay: 1, rel: 0, playsinline: 1, loop: 1 },   // loop: 1 播完整个列表后从头再来
     events: { onStateChange: onState, onError: onError }
   });
 }
