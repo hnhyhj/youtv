@@ -37,12 +37,25 @@ label{display:flex;gap:8px;align-items:center}
 a{color:var(--accent)}
 .ver{font-size:13px;opacity:.7}
 h2{margin:6px 0 10px;font-size:22px}
-.prog{background:var(--panel);border-radius:16px;padding:14px 16px}
-.item{display:grid;grid-template-columns:128px 1fr;gap:14px;align-items:center;width:100%;padding:8px;border:2px solid transparent;border-radius:12px;background:none;color:var(--ink);font:inherit;font-size:17px;text-align:left;cursor:pointer}
-.item:hover,.item:focus-visible{border-color:var(--dim);outline:none}
-.item.on{border-color:var(--accent)}
-.item img{width:128px;height:72px;object-fit:cover;border-radius:8px;background:#000}
-.item small{display:block;color:var(--accent);font-size:14px;font-weight:700}
+.guide-wrap{grid-column:1/-1;order:3;background:var(--panel);border-radius:16px;padding:14px 16px}
+.guide{overflow-x:auto;border-radius:10px}
+.g-grid{min-width:860px;background:#0b1250}
+.g-row{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid #2c3592;min-height:62px}
+.g-head{min-height:44px;background:#06093a;border-bottom:2px solid #2c3592}
+.g-ch{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;border-right:1px solid #2c3592;background:#0e1660;color:var(--ink);font:inherit;cursor:pointer;padding:6px}
+.g-ch b{color:var(--accent);font-size:22px;line-height:1}
+.g-ch span{font-size:13px;letter-spacing:.04em}
+.g-clock{font-size:20px;font-weight:700;cursor:default}
+.g-track{position:relative;overflow:hidden}
+.g-time{position:absolute;top:0;bottom:0;padding:10px 8px;border-left:1px solid #2c3592;font-size:15px;font-weight:700;white-space:nowrap}
+.g-prog{position:absolute;top:0;bottom:0;border:0;border-right:1px solid #2c3592;background:#16206f;color:var(--ink);font:inherit;font-size:15px;text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.g-prog:hover,.g-prog:focus-visible{background:#2a37a6;outline:none}
+.g-prog.cur{color:var(--accent)}
+.g-row.on{background:#2b3bb8;box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}
+.g-row.on .g-prog{background:#2b3bb8}
+.g-row.on .g-ch{background:#2b3bb8}
+.g-now{position:absolute;top:0;bottom:0;width:2px;background:#e3262b;pointer-events:none;z-index:2}
+.g-wait{position:absolute;top:0;bottom:0;left:0;padding:0 10px;display:flex;align-items:center;color:var(--dim);font-size:14px}
 .linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:15px;text-decoration:underline;cursor:pointer;padding:4px 0}
 @media(max-width:600px){.item{grid-template-columns:96px 1fr;font-size:16px}.item img{width:96px;height:54px}}
 .resume{padding:22px 36px;border:0;border-radius:16px;background:var(--accent);color:#111;font:inherit;font-size:28px;font-weight:700;cursor:pointer}
@@ -72,7 +85,7 @@ h2{margin:6px 0 10px;font-size:22px}
       </form>
     </details>
     <div class="hint" id="blockedInfo"></div>
-    <p class="hint ver">版本 v0.9 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.10 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -90,11 +103,12 @@ h2{margin:6px 0 10px;font-size:22px}
       <button class="btn" id="full">全屏</button>
       <button class="btn" id="block">不再播放这个</button>
     </div>
-    <div class="prog">
-      <h2>节目单</h2>
-      <div id="prog"><p class="hint">选一个频道后，这里会列出接下来要播的节目，点哪个就播哪个。</p></div>
-    </div>
   </div>
+    <div class="guide-wrap">
+      <h2>节目表</h2>
+      <div class="guide" id="guide"><p class="hint">正在读取各台的节目…</p></div>
+      <p class="hint">时间是按视频长度估算的，广告会让实际时间往后推一些。点节目名就播那个节目。</p>
+    </div>
 </div>
 
 <script>
@@ -129,7 +143,9 @@ let freshAvailable = false; // 后台检查发现了新视频，等当前视频�
 let lastVideoId = "";       // 正在播的视频 ID，用来判断是否换到了下一个视频
 let blocked = load("sportsTV.blocked", []);  // 设为“不再播放”的视频 ID
 let blockedSkips = 0;       // 连续跳过了几个“不再播放”的视频，防止全部被屏蔽时一直跳
-const titles = {};          // 视频标题缓存：视频 ID → 标题
+const titles = load("sportsTV.titles", {});   // 视频标题缓存：视频 ID → 标题
+const durations = load("sportsTV.dur", {});   // 视频时长缓存：视频 ID → 秒数（时长不会变，存下来下次直接用）
+const guideLists = {};      // 各台的视频列表：频道 ID → [视频 ID, ...]
 
 function buildChannels() {
   channels = [];
@@ -161,7 +177,8 @@ function playlistId(c, all) {
   return (all ? "UU" : "UULF") + rest;
 }
 
-function tune(i) {
+// pickVideoId：从节目表里点了别的台的某个节目时，直接从那个节目开始
+function tune(i, pickVideoId) {
   if (channels.length === 0) return;
   if (i < 0) i = channels.length - 1;
   if (i >= channels.length) i = 0;
@@ -175,10 +192,10 @@ function tune(i) {
   checkedNewest = false;
   freshAvailable = false;
   lastVideoId = "";
-  pending = load("sportsTV.pos." + c.id, null);
+  pending = pickVideoId ? { videoId: pickVideoId, time: 0 } : load("sportsTV.pos." + c.id, null);
   save("sportsTV.lastChannel", c.id);
   blockedSkips = 0;
-  document.getElementById("prog").innerHTML = '<p class="hint">正在读取节目单…</p>';
+  renderGuide();
   setNow("正在调台…（如果有广告，会先播广告）");
   makePlayer(playlistId(c, usingAll));
 }
@@ -271,13 +288,13 @@ function onState(e) {
   }
   blockedSkips = 0;
 
-  titles[data.video_id] = data.title;
+  if (data.title) titles[data.video_id] = data.title;
   setNow(data.title);
-  renderProgram();
+  renderGuide();
 }
 
 // 换视频时 YouTube 常常先插广告，广告期间不会触发“正在播放”，
-// 所以每 2 秒检查一次：列表位置或播放状态变了，就刷新标题和节目单。
+// 所以每 2 秒检查一次：列表位置或播放状态变了，就刷新标题和节目表。
 let shownIdx = -1;
 let shownPlaying = false;
 setInterval(function () {
@@ -291,8 +308,11 @@ setInterval(function () {
     const data = player.getVideoData();
     if (data && data.title) setNow("即将播放：" + data.title);
   }
-  renderProgram();
+  renderGuide();
 }, 2000);
+
+// 时间在走，红线和节目格子每 30 秒重画一次
+setInterval(function () { renderGuide(); }, 30000);
 
 function isBlocked(id) {
   for (let i = 0; i < blocked.length; i++) {
@@ -301,36 +321,111 @@ function isBlocked(id) {
   return false;
 }
 
-// 节目单：列出从当前视频开始的 12 个节目（跳过“不再播放”的），点哪个播哪个
-function renderProgram() {
-  const box = document.getElementById("prog");
-  if (!player || !player.getPlaylist) return;
-  const ids = player.getPlaylist() || [];
-  if (ids.length === 0) return;
-  let idx = player.getPlaylistIndex();
-  if (idx < 0) idx = 0;
+// ================= 节目表 =================
+// 每一行是一个台，横轴是时间，格子宽度按视频时长。
+// 当前正在看的台：按播放器的真实进度画；
+// 其他台：画的是“现在调过去会看到什么”（有没看完的就从没看完的接着，否则从最新的开始）。
 
-  const playingNow = player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING;
-  let html = "";
-  let shown = 0;
-  const missing = [];
-  for (let step = 0; step < ids.length && shown < 12; step++) {
-    const k = (idx + step) % ids.length;   // 到了列表末尾就从头接上（循环播放）
-    const id = ids[k];
-    if (isBlocked(id)) continue;
-    const title = titles[id];
-    if (title === undefined) missing.push(id);
-    html += '<button class="item' + (step === 0 ? ' on' : '') + '" data-k="' + k + '">' +
-      '<img src="https://i.ytimg.com/vi/' + esc(id) + '/mqdefault.jpg" alt="" loading="lazy">' +
-      '<span>' + (step === 0 ? '<small>' + (playingNow ? '正在播放' : '即将播放（如有广告会先播广告）') + '</small>' : '') + esc(!title ? "（正在读取标题…）" : title) + '</span>' +
-      '</button>';
-    shown = shown + 1;
+const GUIDE_BEFORE = 10 * 60;      // 红线左边显示 10 分钟
+const GUIDE_SPAN = 150 * 60;       // 一共显示 2.5 小时
+const DEFAULT_DUR = 10 * 60;       // 还不知道时长的视频，先按 10 分钟画
+
+function twoDigits(n) { return n < 10 ? "0" + n : "" + n; }
+function clockText(sec) {
+  const d = new Date(sec * 1000);
+  return twoDigits(d.getHours()) + ":" + twoDigits(d.getMinutes());
+}
+
+// 某个台从哪个视频、哪一秒开始算
+function startPointFor(c, ids) {
+  const pos = load("sportsTV.pos." + c.id, null);
+  if (pos) {
+    for (let k = 0; k < ids.length; k++) {
+      if (ids[k] === pos.videoId) return { k: k, time: pos.time };
+    }
   }
-  box.innerHTML = '<div style="display:grid;gap:6px">' + html + '</div>';
+  return { k: 0, time: 0 };
+}
+
+// 算出某个台在时间窗口里的节目：[{k, id, start, end}]
+function rowPrograms(i, winStart, winEnd, now) {
+  const c = channels[i];
+  let ids, k, begin;
+  if (i === current && player && player.getPlaylist && player.getPlaylist()) {
+    ids = player.getPlaylist();
+    k = player.getPlaylistIndex();
+    if (k < 0) k = 0;
+    const playingNow = player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING;
+    begin = playingNow ? now - player.getCurrentTime() : now;
+  } else {
+    ids = guideLists[c.id];
+    if (!ids || ids.length === 0) return null;
+    const sp = startPointFor(c, ids);
+    k = sp.k;
+    begin = now - sp.time;
+  }
+  const out = [];
+  let t = begin;
+  for (let step = 0; step < ids.length && t < winEnd && out.length < 40; step++) {
+    const kk = (k + step) % ids.length;
+    const id = ids[kk];
+    if (isBlocked(id)) continue;
+    let d = durations[id];
+    if (!d && i === current && step === 0 && player.getDuration) d = Math.round(player.getDuration());
+    if (!d) d = DEFAULT_DUR;
+    out.push({ k: kk, id: id, start: t, end: t + d });
+    t = t + d;
+  }
+  return out;
+}
+
+function renderGuide() {
+  const box = document.getElementById("guide");
+  const now = Date.now() / 1000;
+  const winStart = now - GUIDE_BEFORE;
+  const winEnd = winStart + GUIDE_SPAN;
+  function pct(sec) { return ((sec - winStart) / GUIDE_SPAN * 100).toFixed(3) + "%"; }
+
+  // 表头：当前时间 + 每半小时一个刻度
+  let head = '<div class="g-row g-head"><div class="g-ch g-clock">' + clockText(now) + '</div><div class="g-track">';
+  let tick = Math.ceil(winStart / 1800) * 1800;
+  while (tick < winEnd) {
+    head += '<div class="g-time" style="left:' + pct(tick) + '">' + clockText(tick) + '</div>';
+    tick = tick + 1800;
+  }
+  head += '</div></div>';
+
+  let rows = "";
+  const missing = [];
+  for (let i = 0; i < channels.length; i++) {
+    const c = channels[i];
+    rows += '<div class="g-row' + (i === current ? ' on' : '') + '">' +
+      '<button class="g-ch" data-tune="' + i + '"><b>' + (i + 1) + '</b><span>' + esc(c.name) + '</span></button>' +
+      '<div class="g-track">';
+    const progs = rowPrograms(i, winStart, winEnd, now);
+    if (!progs) {
+      rows += '<div class="g-wait">正在读取节目…</div>';
+    } else {
+      for (let j = 0; j < progs.length; j++) {
+        const p = progs[j];
+        const left = Math.max(p.start, winStart);
+        const right = Math.min(p.end, winEnd);
+        if (right <= left) continue;
+        const title = titles[p.id];
+        if (title === undefined) missing.push(p.id);
+        const isCur = p.start <= now && now < p.end;
+        rows += '<button class="g-prog' + (isCur ? ' cur' : '') + '" data-ch="' + i + '" data-k="' + p.k + '" data-id="' + esc(p.id) + '"' +
+          ' style="left:' + pct(left) + ';width:calc(' + pct(right) + ' - ' + pct(left) + ')"' +
+          ' title="' + esc(title || "") + '">' + esc(title || "…") + '</button>';
+      }
+    }
+    rows += '<div class="g-now" style="left:' + pct(now) + '"></div></div></div>';
+  }
+  box.innerHTML = '<div class="g-grid">' + head + rows + '</div>';
   loadTitles(missing);
 }
 
-// 向 YouTube 的公开接口要标题，拿到后刷新节目单
+// 向 YouTube 的公开接口要标题，拿到后刷新节目表，并存下来下次直接用
 function loadTitles(ids) {
   if (ids.length === 0) return;
   let left = ids.length;
@@ -343,7 +438,10 @@ function loadTitles(ids) {
       .catch(function () { titles[id] = "（无法读取标题）"; })
       .then(function () {
         left = left - 1;
-        if (left === 0) renderProgram();
+        if (left === 0) {
+          save("sportsTV.titles", titles);
+          renderGuide();
+        }
       });
   }
 }
@@ -356,50 +454,127 @@ function renderBlocked() {
     blocked = [];
     save("sportsTV.blocked", blocked);
     renderBlocked();
-    renderProgram();
+    renderGuide();
   };
 }
 
-// 每 10 分钟在后台悄悄检查一次当前台有没有新视频。
-// 做法：建一个看不见、不播放的小播放器读取同一个列表，看最前面的视频变没变。
-// 发现新视频不会打断正在看的视频，等它播完换到下一个时再切到最新的。
-function checkForNew() {
-  if (current < 0 || !hasPlayed || freshAvailable) return;
-  const c = channels[current];
-  const known = load("sportsTV.newest." + c.id, null);
+// ---------- 后台读取各台的列表和视频时长 ----------
+// 做法：建一个看不见、静音、不播放的小播放器，依次读取每个台的列表，
+// 再把要画在节目表里的视频一个个“准备”（cue）一下，读出时长。
+// 顺便检查当前台有没有新视频：有的话，等当前视频播完就切到最新的。
+let guideBusy = false;
+
+function refreshGuide() {
+  if (guideBusy || !window.YT || !YT.Player) return;
+  guideBusy = true;
+  let i = 0;
+  function nextChannel() {
+    if (i >= channels.length) {
+      guideBusy = false;
+      renderGuide();
+      return;
+    }
+    const c = channels[i];
+    i = i + 1;
+    probeChannel(c, function () {
+      renderGuide();
+      nextChannel();
+    });
+  }
+  nextChannel();
+}
+
+function probeChannel(c, done) {
   let box = document.getElementById("probe");
   if (!box) {
     box = document.createElement("div");
     box.id = "probe";
     document.body.appendChild(box);
   }
+  const isCurrent = current >= 0 && channels[current].id === c.id;
+  const list = playlistId(c, isCurrent ? usingAll : c.all);
+  let waiter = null;
+  let finished = false;
+  let tries = 0;
+
   const probe = new YT.Player("probe", {
     width: 1,
     height: 1,
-    playerVars: { listType: "playlist", list: playlistId(c, usingAll), autoplay: 0, mute: 1 },
+    playerVars: { listType: "playlist", list: list, autoplay: 0, mute: 1 },
     events: {
-      onReady: function () {
-        let tries = 0;
-        const timer = setInterval(function () {
-          tries = tries + 1;
-          const ids = probe.getPlaylist ? probe.getPlaylist() : null;
-          if (ids && ids.length > 0) {
-            clearInterval(timer);
-            // 检查期间没有换台，并且最前面的视频变了，才算有新视频
-            if (current >= 0 && channels[current].id === c.id && known !== null && ids[0] !== known) {
-              freshAvailable = true;
-            }
-            probe.destroy();
-          } else if (tries >= 15) {
-            clearInterval(timer);
-            probe.destroy();
-          }
-        }, 1000);
+      onReady: function () { waitForList(); },
+      onStateChange: function (e) {
+        if (e.data === YT.PlayerState.CUED && waiter) {
+          const w = waiter;
+          waiter = null;
+          w();
+        }
       }
     }
   });
+
+  function finish() {
+    if (finished) return;
+    finished = true;
+    try { probe.destroy(); } catch (e) {}
+    done();
+  }
+
+  function waitForList() {
+    const ids = probe.getPlaylist ? probe.getPlaylist() : null;
+    if (ids && ids.length > 0) {
+      guideLists[c.id] = ids;
+      checkFresh(c, ids);
+      const sp = startPointFor(c, ids);
+      fillDurations(ids, sp.k, 0, 0);
+    } else if (tries < 15) {
+      tries = tries + 1;
+      setTimeout(waitForList, 1000);
+    } else {
+      finish();
+    }
+  }
+
+  // 从起点往后，凑够 3 小时或者看了 25 个视频就停
+  function fillDurations(ids, k, count, total) {
+    if (count >= 25 || total >= 3 * 3600) { finish(); return; }
+    const id = ids[k % ids.length];
+    if (isBlocked(id)) { fillDurations(ids, k + 1, count + 1, total); return; }
+    if (durations[id]) { fillDurations(ids, k + 1, count + 1, total + durations[id]); return; }
+
+    let called = false;
+    function after() {
+      if (called) return;
+      called = true;
+      waiter = null;
+      setTimeout(function () {
+        if (probe.getVideoData && probe.getVideoData().video_id === id) {
+          const d = Math.round(probe.getDuration());
+          if (d > 0) {
+            durations[id] = d;
+            save("sportsTV.dur", durations);
+          }
+        }
+        fillDurations(ids, k + 1, count + 1, total + (durations[id] || DEFAULT_DUR));
+      }, 300);
+    }
+    waiter = after;
+    setTimeout(after, 5000);   // 5 秒还没准备好就跳过这个
+    probe.cueVideoById(id);
+  }
 }
-setInterval(checkForNew, 10 * 60 * 1000);
+
+// 当前台的列表最前面变了，说明有新视频：等当前视频播完就切过去
+function checkFresh(c, ids) {
+  if (current < 0 || channels[current].id !== c.id) return;
+  if (!hasPlayed || freshAvailable) return;
+  const known = load("sportsTV.newest." + c.id, null);
+  if (known !== null && ids[0] !== known) freshAvailable = true;
+}
+
+// YouTube 播放器的程序加载好以后，先读一遍节目表；之后每 10 分钟更新一次
+window.onYouTubeIframeAPIReady = function () { refreshGuide(); };
+setInterval(refreshGuide, 10 * 60 * 1000);
 
 // 有些视频不允许在外部网页播放，或在本地区不能看：自动跳到下一个
 function onError(e) {
@@ -469,12 +644,18 @@ document.getElementById("block").onclick = function () {
   setNow("已设为不再播放，跳到下一个…");
   player.nextVideo();
 };
-document.getElementById("prog").addEventListener("click", function (e) {
-  const item = e.target.closest(".item");
-  if (item && player && player.playVideoAt) {
+document.getElementById("guide").addEventListener("click", function (e) {
+  const chBtn = e.target.closest("[data-tune]");
+  if (chBtn) { tune(Number(chBtn.dataset.tune)); return; }
+  const item = e.target.closest(".g-prog");
+  if (!item) return;
+  const i = Number(item.dataset.ch);
+  if (i === current && player && player.playVideoAt) {
     pending = null;
     freshAvailable = false;   // 自己选的节目，不要被“切到最新”打断
     player.playVideoAt(Number(item.dataset.k));
+  } else {
+    tune(i, item.dataset.id);
   }
 });
 document.getElementById("full").onclick = function () {
@@ -511,6 +692,7 @@ document.getElementById("addForm").addEventListener("submit", function (e) {
 buildChannels();
 renderList();
 renderBlocked();
+renderGuide();
 
 // 打开网页时：如果上次看过某个台，显示“继续观看”大按钮。
 // 浏览器一般不允许网页没被点击就自动带声音播放，所以需要点一下。
