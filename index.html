@@ -39,23 +39,19 @@ a{color:var(--accent)}
 h2{margin:6px 0 10px;font-size:22px}
 .guide-wrap{grid-column:1/-1;order:3;background:var(--panel);border-radius:16px;padding:14px 16px}
 .guide{overflow-x:auto;border-radius:10px}
-.g-grid{min-width:760px;background:#0b1250}
-.g-row{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid #2c3592;min-height:62px}
-.g-head{min-height:44px;background:#06093a;border-bottom:2px solid #2c3592}
-.g-ch{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;border-right:1px solid #2c3592;background:#0e1660;color:var(--ink);font:inherit;cursor:pointer;padding:6px}
-.g-ch b{color:var(--accent);font-size:22px;line-height:1}
-.g-ch span{font-size:13px;letter-spacing:.04em}
-.g-clock{font-size:20px;font-weight:700;cursor:default}
-.g-track{position:relative;overflow:hidden}
-.g-time{position:absolute;top:0;bottom:0;padding:10px 8px;border-left:1px solid #2c3592;font-size:15px;font-weight:700;white-space:nowrap}
-.g-prog{position:absolute;top:0;bottom:0;border:0;border-right:1px solid #2c3592;background:#16206f;color:var(--ink);font:inherit;font-size:15px;text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.g-prog:hover,.g-prog:focus-visible{background:#2a37a6;outline:none}
-.g-prog.cur{color:var(--accent)}
-.g-row.on{background:#2b3bb8;box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}
-.g-row.on .g-prog{background:#2b3bb8}
-.g-row.on .g-ch{background:#2b3bb8}
-.g-now{position:absolute;top:0;bottom:0;width:2px;background:#e3262b;pointer-events:none;z-index:2}
-.g-wait{position:absolute;top:0;bottom:0;left:0;padding:0 10px;display:flex;align-items:center;color:var(--dim);font-size:14px}
+.g-grid{min-width:600px;background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.g-head,.g-line{position:relative}
+.g-head{height:36px;border-bottom:1px solid var(--line)}
+.g-time{position:absolute;top:0;bottom:0;padding:8px 8px;border-left:1px solid var(--line);color:var(--dim);font-size:14px;font-weight:700;white-space:nowrap}
+.g-line{height:76px}
+.g-prog{position:absolute;top:6px;bottom:6px;margin-right:4px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:15px;line-height:1.3;text-align:left;padding:6px 10px;overflow:hidden;cursor:pointer}
+.g-prog small{display:block;color:var(--dim);font-size:13px;white-space:nowrap}
+.g-prog span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.g-prog:hover,.g-prog:focus-visible{border-color:var(--dim);outline:none}
+.g-prog.cur{border:2px solid var(--accent);background:#2a2a1a}
+.g-prog.cur small{color:var(--accent)}
+.g-now{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);pointer-events:none;z-index:2}
+.g-wait{position:absolute;inset:0;padding:0 12px;display:flex;align-items:center;color:var(--dim);font-size:15px}
 .linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:15px;text-decoration:underline;cursor:pointer;padding:4px 0}
 @media(max-width:600px){.item{grid-template-columns:96px 1fr;font-size:16px}.item img{width:96px;height:54px}}
 .resume{padding:22px 36px;border:0;border-radius:16px;background:var(--accent);color:#111;font:inherit;font-size:28px;font-weight:700;cursor:pointer}
@@ -85,7 +81,7 @@ h2{margin:6px 0 10px;font-size:22px}
       </form>
     </details>
     <div class="hint" id="blockedInfo"></div>
-    <p class="hint ver">版本 v0.11 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.12 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -105,8 +101,8 @@ h2{margin:6px 0 10px;font-size:22px}
     </div>
   </div>
     <div class="guide-wrap">
-      <h2>节目表</h2>
-      <div class="guide" id="guide"><p class="hint">正在读取各台的节目…</p></div>
+      <h2 id="guideTitle">节目表</h2>
+      <div class="guide" id="guide"></div>
       <p class="hint">时间是按视频长度估算的，广告会让实际时间往后推一些。点节目名就播那个节目。</p>
     </div>
 </div>
@@ -198,6 +194,7 @@ function tune(i, pickVideoId) {
   renderGuide();
   setNow("正在调台…（如果有广告，会先播广告）");
   makePlayer(playlistId(c, usingAll));
+  setTimeout(refreshGuide, 3000);
 }
 
 // 每次换台都拆掉旧播放器、新建一个。
@@ -385,9 +382,17 @@ function rowPrograms(i, winStart, winEnd, now) {
 
 function renderGuide() {
   const box = document.getElementById("guide");
+  const titleBox = document.getElementById("guideTitle");
+  if (current < 0) {
+    titleBox.textContent = "节目表";
+    box.innerHTML = '<p class="hint">选一个频道后，这里显示这个台接下来的节目。</p>';
+    return;
+  }
+  titleBox.textContent = "节目表：" + channels[current].name;
+
   const now = Date.now() / 1000;
   // 屏幕越宽，显示的时间越长：最少 1 小时，最多 3 小时
-  let minutes = Math.floor((box.clientWidth - 150) / PX_PER_MIN);
+  let minutes = Math.floor(box.clientWidth / PX_PER_MIN);
   if (minutes < 60) minutes = 60;
   if (minutes > 180) minutes = 180;
   const span = minutes * 60;
@@ -395,42 +400,38 @@ function renderGuide() {
   const winEnd = winStart + span;
   function pct(sec) { return ((sec - winStart) / span * 100).toFixed(3) + "%"; }
 
-  // 表头：当前时间 + 每半小时一个刻度
-  let head = '<div class="g-row g-head"><div class="g-ch g-clock">' + clockText(now) + '</div><div class="g-track">';
+  // 表头：每半小时一个刻度
+  let head = '<div class="g-head">';
   let tick = Math.ceil(winStart / 1800) * 1800;
   while (tick < winEnd) {
     head += '<div class="g-time" style="left:' + pct(tick) + '">' + clockText(tick) + '</div>';
     tick = tick + 1800;
   }
-  head += '</div></div>';
+  head += '</div>';
 
-  let rows = "";
+  let line = '<div class="g-line">';
   const missing = [];
-  for (let i = 0; i < channels.length; i++) {
-    const c = channels[i];
-    rows += '<div class="g-row' + (i === current ? ' on' : '') + '">' +
-      '<button class="g-ch" data-tune="' + i + '"><b>' + (i + 1) + '</b><span>' + esc(c.name) + '</span></button>' +
-      '<div class="g-track">';
-    const progs = rowPrograms(i, winStart, winEnd, now);
-    if (!progs) {
-      rows += '<div class="g-wait">正在读取节目…</div>';
-    } else {
-      for (let j = 0; j < progs.length; j++) {
-        const p = progs[j];
-        const left = Math.max(p.start, winStart);
-        const right = Math.min(p.end, winEnd);
-        if (right <= left) continue;
-        const title = titles[p.id];
-        if (title === undefined) missing.push(p.id);
-        const isCur = p.start <= now && now < p.end;
-        rows += '<button class="g-prog' + (isCur ? ' cur' : '') + '" data-ch="' + i + '" data-k="' + p.k + '" data-id="' + esc(p.id) + '"' +
-          ' style="left:' + pct(left) + ';width:calc(' + pct(right) + ' - ' + pct(left) + ')"' +
-          ' title="' + esc(title || "") + '">' + esc(title || "…") + '</button>';
-      }
+  const progs = rowPrograms(current, winStart, winEnd, now);
+  if (!progs) {
+    line += '<div class="g-wait">正在读取节目…</div>';
+  } else {
+    for (let j = 0; j < progs.length; j++) {
+      const p = progs[j];
+      const left = Math.max(p.start, winStart);
+      const right = Math.min(p.end, winEnd);
+      if (right <= left) continue;
+      const title = titles[p.id];
+      if (title === undefined) missing.push(p.id);
+      const isCur = p.start <= now && now < p.end;
+      line += '<button class="g-prog' + (isCur ? ' cur' : '') + '" data-k="' + p.k + '"' +
+        ' style="left:' + pct(left) + ';width:calc(' + pct(right) + ' - ' + pct(left) + ' - 4px)"' +
+        ' title="' + esc(title || "") + '">' +
+        '<small>' + (isCur ? '正在播放' : clockText(p.start)) + '</small>' +
+        '<span>' + esc(title || "…") + '</span></button>';
     }
-    rows += '<div class="g-now" style="left:' + pct(now) + '"></div></div></div>';
   }
-  box.innerHTML = '<div class="g-grid">' + head + rows + '</div>';
+  line += '<div class="g-now" style="left:' + pct(now) + '"></div></div>';
+  box.innerHTML = '<div class="g-grid">' + head + line + '</div>';
   loadTitles(missing);
 }
 
@@ -468,29 +469,18 @@ function renderBlocked() {
 }
 
 // ---------- 后台读取各台的列表和视频时长 ----------
-// 做法：建一个看不见、静音、不播放的小播放器，依次读取每个台的列表，
+// 做法：建一个看不见、静音、不播放的小播放器，读取当前台的列表，
 // 再把要画在节目表里的视频一个个“准备”（cue）一下，读出时长。
 // 顺便检查当前台有没有新视频：有的话，等当前视频播完就切到最新的。
 let guideBusy = false;
 
 function refreshGuide() {
-  if (guideBusy || !window.YT || !YT.Player) return;
+  if (guideBusy || !window.YT || !YT.Player || current < 0) return;
   guideBusy = true;
-  let i = 0;
-  function nextChannel() {
-    if (i >= channels.length) {
-      guideBusy = false;
-      renderGuide();
-      return;
-    }
-    const c = channels[i];
-    i = i + 1;
-    probeChannel(c, function () {
-      renderGuide();
-      nextChannel();
-    });
-  }
-  nextChannel();
+  probeChannel(channels[current], function () {
+    guideBusy = false;
+    renderGuide();
+  });
 }
 
 function probeChannel(c, done) {
@@ -654,18 +644,11 @@ document.getElementById("block").onclick = function () {
   player.nextVideo();
 };
 document.getElementById("guide").addEventListener("click", function (e) {
-  const chBtn = e.target.closest("[data-tune]");
-  if (chBtn) { tune(Number(chBtn.dataset.tune)); return; }
   const item = e.target.closest(".g-prog");
-  if (!item) return;
-  const i = Number(item.dataset.ch);
-  if (i === current && player && player.playVideoAt) {
-    pending = null;
-    freshAvailable = false;   // 自己选的节目，不要被“切到最新”打断
-    player.playVideoAt(Number(item.dataset.k));
-  } else {
-    tune(i, item.dataset.id);
-  }
+  if (!item || !player || !player.playVideoAt) return;
+  pending = null;
+  freshAvailable = false;   // 自己选的节目，不要被“切到最新”打断
+  player.playVideoAt(Number(item.dataset.k));
 });
 document.getElementById("full").onclick = function () {
   const s = document.getElementById("screen");
