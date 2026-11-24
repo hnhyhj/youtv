@@ -81,7 +81,7 @@ h2{margin:6px 0 10px;font-size:22px}
       </form>
     </details>
     <div class="hint" id="blockedInfo"></div>
-    <p class="hint ver">版本 v0.12 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.13 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -114,8 +114,8 @@ const BUILT_IN = [
   { name: "NBA 篮球",   sub: "NBA 官方",          id: "UCWJ2lWNubArHWmf3FIHbfcQ", all: false },
   { name: "羽毛球",     sub: "BWF TV 世界羽联",    id: "UChh-akEbUM8_6ghGVnJd6cQ", all: false },
   { name: "网球",       sub: "Tennis TV（ATP）",   id: "UCbcxFkd6B9xUU54InHv4Tig", all: false },
-  { name: "奥运会",     sub: "Olympics 官方",      id: "UCTl3QQTvqHFjurroKxexy2Q", all: false },
-  { name: "足球 / 世界杯", sub: "FIFA 官方",       id: "UCpcTrCXblq78GZrTUTLWeBw", all: false }
+  { name: "奥运会",     sub: "Olympics 官方",      id: "UCTl3QQTvqHFjurroKxexy2Q", all: false }
+  // FIFA 官方频道（UCpcTrCXblq78GZrTUTLWeBw）不允许在其他网站嵌入播放（错误 150），只能在 YouTube 上看，所以去掉了
 ];
 
 function load(key, fallback) {
@@ -582,6 +582,11 @@ function onError(e) {
   if (!hasPlayed && !usingAll) {
     usingAll = true;
     makePlayer(playlistId(channels[current], true));
+    return;
+  }
+  // 一个视频都没放出来就连续报错：整个台都不允许在其他网站播放
+  if (!hasPlayed && errorCount >= 3) {
+    setNow("这个台的视频不允许在其他网站播放，只能去 YouTube 上看。请换一个台。");
     return;
   }
   if (errorCount < 10) {
