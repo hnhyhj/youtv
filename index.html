@@ -63,7 +63,7 @@ a{color:var(--accent)}
   <div class="main">
     <div class="screen" id="screen">
       <div id="player"></div>
-      <div class="msg" id="msg">点左边任意一个频道开始</div>
+      <div class="msg" id="msg">选一个频道开始</div>
     </div>
     <div class="now" id="now"></div>
     <div class="bar">
@@ -82,7 +82,7 @@ a{color:var(--accent)}
 // 频道表。all: true 表示播放全部上传（含直播回放、短视频）；否则只播普通长视频。
 const BUILT_IN = [
   { name: "NBA 篮球",   sub: "NBA 官方",          id: "UCWJ2lWNubArHWmf3FIHbfcQ", all: false },
-  { name: "羽毛球",     sub: "BWF TV 世界羽联",    id: "UChh-akEbUM8_6ghGVnJd6cQ", all: true  },
+  { name: "羽毛球",     sub: "BWF TV 世界羽联",    id: "UChh-akEbUM8_6ghGVnJd6cQ", all: false },
   { name: "网球",       sub: "Tennis TV（ATP）",   id: "UCbcxFkd6B9xUU54InHv4Tig", all: false },
   { name: "奥运会",     sub: "Olympics 官方",      id: "UCTl3QQTvqHFjurroKxexy2Q", all: false },
   { name: "足球 / 世界杯", sub: "FIFA 官方",       id: "UCpcTrCXblq78GZrTUTLWeBw", all: false }
@@ -103,7 +103,7 @@ let player = null;
 let pending = null;      // 等待恢复的播放位置 {videoId, time}
 let usingAll = false;    // 当前频道是否已退回到“全部上传”
 let errorCount = 0;
-let startTimer = null;
+let hasPlayed = false;   // 这次调台后是否已经放出过视频
 
 function buildChannels() {
   channels = [];
@@ -145,8 +145,9 @@ function tune(i) {
   const c = channels[i];
   usingAll = c.all;
   errorCount = 0;
+  hasPlayed = false;
   pending = load("sportsTV.pos." + c.id, null);
-  setNow("正在调台…");
+  setNow("正在调台…（如果有广告，会先播广告）");
   if (!player) {
     player = new YT.Player("player", {
       playerVars: { listType: "playlist", list: playlistId(c, usingAll), autoplay: 1, rel: 0, playsinline: 1 },
@@ -155,23 +156,11 @@ function tune(i) {
   } else {
     player.loadPlaylist({ listType: "playlist", list: playlistId(c, usingAll), index: 0 });
   }
-  watchStart();
-}
-
-// 如果几秒内没有开始播放，并且还没试过“全部上传”，就自动换过去试
-function watchStart() {
-  clearTimeout(startTimer);
-  startTimer = setTimeout(function () {
-    if (!usingAll && current >= 0) {
-      usingAll = true;
-      player.loadPlaylist({ listType: "playlist", list: playlistId(channels[current], true), index: 0 });
-    }
-  }, 9000);
 }
 
 function onState(e) {
   if (e.data === YT.PlayerState.PLAYING) {
-    clearTimeout(startTimer);
+    hasPlayed = true;
     errorCount = 0;
     const data = player.getVideoData();
     if (pending) {
@@ -195,7 +184,8 @@ function onState(e) {
 // 有些视频不允许在外部网页播放，或在本地区不能看：自动跳到下一个
 function onError(e) {
   errorCount = errorCount + 1;
-  if (errorCount === 1 && !usingAll) {
+  // 这个台还一个视频都没放出来就报错，可能是“只播长视频”的列表不可用，改成全部上传再试
+  if (!hasPlayed && !usingAll) {
     usingAll = true;
     player.loadPlaylist({ listType: "playlist", list: playlistId(channels[current], true), index: 0 });
     return;
