@@ -81,7 +81,7 @@ h2{margin:6px 0 10px;font-size:22px}
       </form>
     </details>
     <div class="hint" id="blockedInfo"></div>
-    <p class="hint ver">版本 v0.13 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.14 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -210,14 +210,45 @@ function makePlayer(list) {
     el.id = "player";
     document.getElementById("screen").prepend(el);
   }
+  handledVid = "";
+  advancing = false;
+  lastPollTime = -1;
+  lastPollVid = "";
   player = new YT.Player("player", {
     playerVars: { listType: "playlist", list: list, autoplay: 1, rel: 0, playsinline: 1, loop: 1 },   // loop: 1 播完整个列表后从头再来
     events: { onStateChange: onState, onError: onError }
   });
 }
 
+// YouTube 的“开始播放”通知不可靠：实测视频明明在播，播放器状态却一直报告“还没开始”。
+// 所以除了听通知，还每秒检查一次播放时间有没有往前走（见下面的 heartbeat）。
+// 两边谁先发现“新视频开始播了”，就由谁调用 onPlaying；每个视频只处理一次。
+let handledVid = "";     // 已经处理过“开始播放”的视频 ID
+let advancing = false;   // 播放时间是否在往前走（= 真的在播放）
+let lastPollTime = -1;
+let lastPollVid = "";
+
 function onState(e) {
   if (e.data !== YT.PlayerState.PLAYING) return;
+  const vid = player.getVideoData().video_id;
+  if (vid && vid !== handledVid) onPlaying();
+}
+
+setInterval(function () {
+  if (!player || !player.getCurrentTime || !player.getVideoData || current < 0) {
+    advancing = false;
+    return;
+  }
+  const t = player.getCurrentTime();
+  const vid = player.getVideoData().video_id;
+  advancing = vid !== "" && vid === lastPollVid && t > lastPollTime + 0.3;
+  lastPollTime = t;
+  lastPollVid = vid;
+  if (advancing && vid !== handledVid) onPlaying();
+}, 1000);
+
+function onPlaying() {
+  handledVid = player.getVideoData().video_id;
   hasPlayed = true;
   errorCount = 0;
   const c = channels[current];
@@ -297,7 +328,7 @@ let shownPlaying = false;
 setInterval(function () {
   if (!player || !player.getPlaylistIndex || !player.getPlayerState || current < 0) return;
   const idx = player.getPlaylistIndex();
-  const playingNow = player.getPlayerState() === YT.PlayerState.PLAYING;
+  const playingNow = advancing;
   if (idx === shownIdx && playingNow === shownPlaying) return;
   shownIdx = idx;
   shownPlaying = playingNow;
@@ -356,8 +387,8 @@ function rowPrograms(i, winStart, winEnd, now) {
     ids = player.getPlaylist();
     k = player.getPlaylistIndex();
     if (k < 0) k = 0;
-    const playingNow = player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING;
-    begin = playingNow ? now - player.getCurrentTime() : now;
+    const t = player.getCurrentTime ? player.getCurrentTime() : 0;
+    begin = t > 0 ? now - t : now;
   } else {
     ids = guideLists[c.id];
     if (!ids || ids.length === 0) return null;
@@ -606,7 +637,7 @@ function setNow(text) {
 setInterval(function () {
   if (!player || current < 0 || !player.getVideoData || !player.getPlayerState) return;
   if (!hasPlayed) return;   // 新台还没放出视频时不记录，免得把上一个台的位置记到这个台名下
-  if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;
+  if (!advancing) return;
   const data = player.getVideoData();
   if (!data || !data.video_id) return;
   save("sportsTV.pos." + channels[current].id, { videoId: data.video_id, time: Math.floor(player.getCurrentTime()) });
@@ -614,7 +645,7 @@ setInterval(function () {
 
 function togglePause() {
   if (!player || !player.getPlayerState) return;
-  if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo();
+  if (advancing) player.pauseVideo();
   else player.playVideo();
 }
 
