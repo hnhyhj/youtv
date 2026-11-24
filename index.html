@@ -39,7 +39,7 @@ a{color:var(--accent)}
 h2{margin:6px 0 10px;font-size:22px}
 .guide-wrap{grid-column:1/-1;order:3;background:var(--panel);border-radius:16px;padding:14px 16px}
 .guide{overflow-x:auto;border-radius:10px}
-.g-grid{min-width:860px;background:#0b1250}
+.g-grid{min-width:760px;background:#0b1250}
 .g-row{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid #2c3592;min-height:62px}
 .g-head{min-height:44px;background:#06093a;border-bottom:2px solid #2c3592}
 .g-ch{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;border-right:1px solid #2c3592;background:#0e1660;color:var(--ink);font:inherit;cursor:pointer;padding:6px}
@@ -85,7 +85,7 @@ h2{margin:6px 0 10px;font-size:22px}
       </form>
     </details>
     <div class="hint" id="blockedInfo"></div>
-    <p class="hint ver">版本 v0.10 · 2026-11-24</p>
+    <p class="hint ver">版本 v0.11 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -306,10 +306,14 @@ setInterval(function () {
   shownPlaying = playingNow;
   if (!playingNow) {
     const data = player.getVideoData();
-    if (data && data.title) setNow("即将播放：" + data.title);
+    // 广告期间播放器有时拿不到标题，就用节目表里存的标题
+    const t = data ? (data.title || titles[data.video_id]) : "";
+    if (t) setNow("即将播放：" + t);
   }
   renderGuide();
 }, 2000);
+
+window.addEventListener("resize", function () { renderGuide(); });
 
 // 时间在走，红线和节目格子每 30 秒重画一次
 setInterval(function () { renderGuide(); }, 30000);
@@ -327,7 +331,7 @@ function isBlocked(id) {
 // 其他台：画的是“现在调过去会看到什么”（有没看完的就从没看完的接着，否则从最新的开始）。
 
 const GUIDE_BEFORE = 10 * 60;      // 红线左边显示 10 分钟
-const GUIDE_SPAN = 150 * 60;       // 一共显示 2.5 小时
+const PX_PER_MIN = 10;             // 每分钟画 10 像素，短视频的标题也能看到几个字
 const DEFAULT_DUR = 10 * 60;       // 还不知道时长的视频，先按 10 分钟画
 
 function twoDigits(n) { return n < 10 ? "0" + n : "" + n; }
@@ -382,9 +386,14 @@ function rowPrograms(i, winStart, winEnd, now) {
 function renderGuide() {
   const box = document.getElementById("guide");
   const now = Date.now() / 1000;
+  // 屏幕越宽，显示的时间越长：最少 1 小时，最多 3 小时
+  let minutes = Math.floor((box.clientWidth - 150) / PX_PER_MIN);
+  if (minutes < 60) minutes = 60;
+  if (minutes > 180) minutes = 180;
+  const span = minutes * 60;
   const winStart = now - GUIDE_BEFORE;
-  const winEnd = winStart + GUIDE_SPAN;
-  function pct(sec) { return ((sec - winStart) / GUIDE_SPAN * 100).toFixed(3) + "%"; }
+  const winEnd = winStart + span;
+  function pct(sec) { return ((sec - winStart) / span * 100).toFixed(3) + "%"; }
 
   // 表头：当前时间 + 每半小时一个刻度
   let head = '<div class="g-row g-head"><div class="g-ch g-clock">' + clockText(now) + '</div><div class="g-track">';
