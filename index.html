@@ -36,6 +36,15 @@ input{font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1px sol
 label{display:flex;gap:8px;align-items:center}
 a{color:var(--accent)}
 .ver{font-size:13px;opacity:.7}
+h2{margin:6px 0 10px;font-size:22px}
+.prog{background:var(--panel);border-radius:16px;padding:14px 16px}
+.item{display:grid;grid-template-columns:128px 1fr;gap:14px;align-items:center;width:100%;padding:8px;border:2px solid transparent;border-radius:12px;background:none;color:var(--ink);font:inherit;font-size:17px;text-align:left;cursor:pointer}
+.item:hover,.item:focus-visible{border-color:var(--dim);outline:none}
+.item.on{border-color:var(--accent)}
+.item img{width:128px;height:72px;object-fit:cover;border-radius:8px;background:#000}
+.item small{display:block;color:var(--accent);font-size:14px;font-weight:700}
+.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:15px;text-decoration:underline;cursor:pointer;padding:4px 0}
+@media(max-width:600px){.item{grid-template-columns:96px 1fr;font-size:16px}.item img{width:96px;height:54px}}
 .resume{padding:22px 36px;border:0;border-radius:16px;background:var(--accent);color:#111;font:inherit;font-size:28px;font-weight:700;cursor:pointer}
 .resume:focus-visible{outline:4px solid var(--ink)}
 #probe{position:fixed;left:-10px;top:-10px;width:1px;height:1px;opacity:0;pointer-events:none}
@@ -62,7 +71,8 @@ a{color:var(--accent)}
         <div class="hint" id="addMsg"></div>
       </form>
     </details>
-    <p class="hint ver">版本 v0.7 · 2026-11-24</p>
+    <div class="hint" id="blockedInfo"></div>
+    <p class="hint ver">版本 v0.8 · 2026-11-24</p>
   </div>
 
   <div class="main">
@@ -78,6 +88,11 @@ a{color:var(--accent)}
       <button class="btn" id="next">下一个 ▶</button>
       <button class="btn" id="pause">暂停 / 继续</button>
       <button class="btn" id="full">全屏</button>
+      <button class="btn" id="block">不再播放这个</button>
+    </div>
+    <div class="prog">
+      <h2>节目单</h2>
+      <div id="prog"><p class="hint">选一个频道后，这里会列出接下来要播的节目，点哪个就播哪个。</p></div>
     </div>
   </div>
 </div>
@@ -112,6 +127,9 @@ let hasPlayed = false;   // 这次调台后是否已经放出过视频
 let checkedNewest = false;  // 这次调台后是否已经检查过“有没有新视频”
 let freshAvailable = false; // 后台检查发现了新视频，等当前视频播完就切过去
 let lastVideoId = "";       // 正在播的视频 ID，用来判断是否换到了下一个视频
+let blocked = load("sportsTV.blocked", []);  // 设为“不再播放”的视频 ID
+let blockedSkips = 0;       // 连续跳过了几个“不再播放”的视频，防止全部被屏蔽时一直跳
+const titles = {};          // 视频标题缓存：视频 ID → 标题
 
 function buildChannels() {
   channels = [];
@@ -159,6 +177,8 @@ function tune(i) {
   lastVideoId = "";
   pending = load("sportsTV.pos." + c.id, null);
   save("sportsTV.lastChannel", c.id);
+  blockedSkips = 0;
+  document.getElementById("prog").innerHTML = '<p class="hint">正在读取节目单…</p>';
   setNow("正在调台…（如果有广告，会先播广告）");
   makePlayer(playlistId(c, usingAll));
 }
@@ -239,7 +259,86 @@ function onState(e) {
       }
     }
   }
+
+  // 设为“不再播放”的视频：自动跳过
+  if (!pending && isBlocked(data.video_id)) {
+    blockedSkips = blockedSkips + 1;
+    if (blockedSkips < 30) {
+      setNow("跳过一个设为“不再播放”的视频…");
+      player.nextVideo();
+      return;
+    }
+  }
+  blockedSkips = 0;
+
+  titles[data.video_id] = data.title;
   setNow(data.title);
+  renderProgram();
+}
+
+function isBlocked(id) {
+  for (let i = 0; i < blocked.length; i++) {
+    if (blocked[i] === id) return true;
+  }
+  return false;
+}
+
+// 节目单：列出从当前视频开始的 12 个节目（跳过“不再播放”的），点哪个播哪个
+function renderProgram() {
+  const box = document.getElementById("prog");
+  if (!player || !player.getPlaylist) return;
+  const ids = player.getPlaylist() || [];
+  if (ids.length === 0) return;
+  let idx = player.getPlaylistIndex();
+  if (idx < 0) idx = 0;
+
+  let html = "";
+  let shown = 0;
+  const missing = [];
+  for (let step = 0; step < ids.length && shown < 12; step++) {
+    const k = (idx + step) % ids.length;   // 到了列表末尾就从头接上（循环播放）
+    const id = ids[k];
+    if (isBlocked(id)) continue;
+    const title = titles[id];
+    if (title === undefined) missing.push(id);
+    html += '<button class="item' + (step === 0 ? ' on' : '') + '" data-k="' + k + '">' +
+      '<img src="https://i.ytimg.com/vi/' + esc(id) + '/mqdefault.jpg" alt="" loading="lazy">' +
+      '<span>' + (step === 0 ? '<small>正在播放</small>' : '') + esc(!title ? "（正在读取标题…）" : title) + '</span>' +
+      '</button>';
+    shown = shown + 1;
+  }
+  box.innerHTML = '<div style="display:grid;gap:6px">' + html + '</div>';
+  loadTitles(missing);
+}
+
+// 向 YouTube 的公开接口要标题，拿到后刷新节目单
+function loadTitles(ids) {
+  if (ids.length === 0) return;
+  let left = ids.length;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    titles[id] = "";   // 先占位，避免重复请求
+    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { titles[id] = (j && j.title) ? j.title : "（无法读取标题）"; })
+      .catch(function () { titles[id] = "（无法读取标题）"; })
+      .then(function () {
+        left = left - 1;
+        if (left === 0) renderProgram();
+      });
+  }
+}
+
+function renderBlocked() {
+  const box = document.getElementById("blockedInfo");
+  if (blocked.length === 0) { box.innerHTML = ""; return; }
+  box.innerHTML = '已设为不再播放：' + blocked.length + ' 个视频 <button class="linkbtn" id="unblock">全部恢复</button>';
+  document.getElementById("unblock").onclick = function () {
+    blocked = [];
+    save("sportsTV.blocked", blocked);
+    renderBlocked();
+    renderProgram();
+  };
 }
 
 // 每 10 分钟在后台悄悄检查一次当前台有没有新视频。
@@ -341,6 +440,24 @@ document.getElementById("chUp").onclick = function () { tune(current + 1); };
 document.getElementById("prev").onclick = function () { if (player && player.previousVideo) player.previousVideo(); };
 document.getElementById("next").onclick = function () { if (player && player.nextVideo) player.nextVideo(); };
 document.getElementById("pause").onclick = togglePause;
+document.getElementById("block").onclick = function () {
+  if (!player || !player.getVideoData) return;
+  const id = player.getVideoData().video_id;
+  if (!id) return;
+  if (!isBlocked(id)) blocked.push(id);
+  save("sportsTV.blocked", blocked);
+  renderBlocked();
+  setNow("已设为不再播放，跳到下一个…");
+  player.nextVideo();
+};
+document.getElementById("prog").addEventListener("click", function (e) {
+  const item = e.target.closest(".item");
+  if (item && player && player.playVideoAt) {
+    pending = null;
+    freshAvailable = false;   // 自己选的节目，不要被“切到最新”打断
+    player.playVideoAt(Number(item.dataset.k));
+  }
+});
 document.getElementById("full").onclick = function () {
   const s = document.getElementById("screen");
   if (s.requestFullscreen) s.requestFullscreen().catch(function () {});
@@ -374,6 +491,7 @@ document.getElementById("addForm").addEventListener("submit", function (e) {
 
 buildChannels();
 renderList();
+renderBlocked();
 
 // 打开网页时：如果上次看过某个台，显示“继续观看”大按钮。
 // 浏览器一般不允许网页没被点击就自动带声音播放，所以需要点一下。
