@@ -1,10 +1,114 @@
 {
   "date": "2026-11-27",
-  "generated": "2026-11-27T17:06:45Z",
+  "generated": "2026-11-27T17:27:54Z",
   "events": [
     "戴维斯杯八强赛"
   ],
   "items": [
+    {
+      "id": "ZDpgsqKpIpc",
+      "title": "Saudi Arabia 🇸🇦 v China 🇨🇳 | Extended Highlights | FIBA Basketball World Cup 2027 Asian Qualifiers",
+      "sport": "篮球",
+      "event": "FIBA 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T16:00:33+00:00"
+    },
+    {
+      "id": "WcWTm-KB2Uk",
+      "title": "Syria 🇸🇾 v Philippines 🇵🇭 | Highlights | FIBA Basketball World Cup 2027 Asian Qualifiers",
+      "sport": "篮球",
+      "event": "FIBA 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T14:02:07+00:00"
+    },
+    {
+      "id": "_b1IJzrGEzo",
+      "title": "An Impressive Performance 🤩 Leylah Fernandez vs. Talia Gibson 2026 Singapore Final | WTA Full Match",
+      "sport": "网球",
+      "event": "WTA 最新集锦",
+      "kind": "全场",
+      "published": "2026-11-27T13:00:12+00:00"
+    },
+    {
+      "id": "qdJDMr1B3EM",
+      "title": "Iran 🇮🇷 v Australia 🇦🇺 | Highlights | FIBA Basketball World Cup 2027 Asian Qualifiers",
+      "sport": "篮球",
+      "event": "FIBA 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T11:17:31+00:00"
+    },
+    {
+      "id": "HR8wGAhfRoY",
+      "title": "★60분 요약★ [변상일vs이야마 유타] 제28회 농심신라면배 세계바둑최강전 | 5국 다이제스트",
+      "sport": "围棋",
+      "event": "K바둑 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T08:38:45+00:00"
+    },
+    {
+      "id": "Ab7YMSNBOqk",
+      "title": "[김기백vs베르나르디스 다비데] 제21회 국무총리배 세계바둑선수권대회 국가대표 부문 7R 2부",
+      "sport": "围棋",
+      "event": "K바둑 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T08:27:10+00:00"
+    },
+    {
+      "id": "Hntl6l29u7Y",
+      "title": "[김기백vs베르나르디스 다비데] 제21회 국무총리배 세계바둑선수권대회 국가대표 부문 7R 1부",
+      "sport": "围棋",
+      "event": "K바둑 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T08:27:01+00:00"
+    },
+    {
+      "id": "R3kKQJE3ghE",
+      "title": "[김기백vs타쿠미 유사쿠] 제21회 국무총리배 세계바둑선수권대회 국가대표 부문 5R 2부",
+      "sport": "围棋",
+      "event": "K바둑 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T08:26:48+00:00"
+    },
+    {
+      "id": "L1tqnNM34FQ",
+      "title": "[김기백vs타쿠미 유사쿠] 제21회 국무총리배 세계바둑선수권대회 국가대표 부문 5R 1부",
+      "sport": "围棋",
+      "event": "K바둑 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T08:26:33+00:00"
+    },
+    {
+      "id": "cop_vIBegUc",
+      "title": "[변상일vs이야마 유타] 제28회 농심신라면배 세계바둑최강전 | 5국 #農心辛ラーメン杯世界囲碁最強戦 #农心辛拉面杯世界围棋最强战",
+      "sport": "围棋",
+      "event": "K바둑 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T08:25:30+00:00"
+    },
+    {
+      "id": "x_Qb00XNqM8",
+      "title": "Jordan 🇯🇴 v New Zealand 🇳🇿 | Highlights | FIBA Basketball World Cup 2027 Asian Qualifiers",
+      "sport": "篮球",
+      "event": "FIBA 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T08:13:01+00:00"
+    },
+    {
+      "id": "cm5m7fPbhsk",
+      "title": "Panama 🇵🇦 v Puerto Rico 🇵🇷 | Highlights | FIBA Basketball World Cup 2027 Americas Qualifiers",
+      "sport": "篮球",
+      "event": "FIBA 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T03:54:24+00:00"
+    },
+    {
+      "id": "qsIyKEAMBQA",
+      "title": "Argentina 🇦🇷 v Bahamas 🇧🇸 | Highlights | FIBA Basketball World Cup 2027 Americas Qualifiers",
+      "sport": "篮球",
+      "event": "FIBA 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-27T03:13:50+00:00"
+    },
     {
       "id": "5EaY-W4T8O8",
       "title": "EXTENDED: SPURS at TRAIL BLAZERS | EMIRATES NBA CUP 🏆 | FULL GAME HIGHLIGHTS | November 25, 2026",
@@ -20,6 +124,14 @@
       "event": "NBA 最新集锦",
       "kind": "集锦",
       "published": "2026-11-26T06:02:47+00:00"
+    },
+    {
+      "id": "YTektcFCcYQ",
+      "title": "Reaching New Heights 🚀 Alexandra Eala vs. Naomi Osaka 2026 Washington, DC Semifinal | WTA Full Match",
+      "sport": "网球",
+      "event": "WTA 最新集锦",
+      "kind": "全场",
+      "published": "2026-11-25T13:00:11+00:00"
     }
   ]
 }
