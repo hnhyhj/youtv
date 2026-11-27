@@ -1,0 +1,66 @@
+{
+  "updated": "2026-11-27",
+  "about": "赛事日历：由 Claude 每周更新。每日列表脚本按这里的赛事去官方频道找当天的集锦和全场回放。",
+  "words": {
+    "include_any": ["highlights", "full match", "full game", "extended", "final", "vs", " v "],
+    "exclude_any": ["press conference", "interview", "behind the scenes", "trailer", "#shorts", "reaction", "preview", "draw ceremony", "podcast", "mic'd up"]
+  },
+  "defaults": [
+    { "sport": "篮球", "channel": "UCWJ2lWNubArHWmf3FIHbfcQ", "channel_name": "NBA", "include_any": ["full game highlights"] },
+    { "sport": "网球", "channel": "UCbcxFkd6B9xUU54InHv4Tig", "channel_name": "Tennis TV", "include_any": ["highlights"] },
+    { "sport": "羽毛球", "channel": "UChh-akEbUM8_6ghGVnJd6cQ", "channel_name": "BWF TV", "include_any": ["highlights"] },
+    { "sport": "乒乓球", "channel": "UC9ckyA_A3MfXUa0ttxMoIZw", "channel_name": "WTT", "include_any": ["highlights"] }
+  ],
+  "events": [
+    {
+      "name": "Davis Cup Final 8",
+      "name_zh": "戴维斯杯八强赛",
+      "sport": "网球",
+      "start": "2026-11-24",
+      "end": "2026-11-29",
+      "channels": [],
+      "match_any": ["davis cup"],
+      "note": "官方 YouTube 频道待确认，暂无视频来源"
+    },
+    {
+      "name": "Emirates NBA Cup Knockout Rounds",
+      "name_zh": "NBA 杯淘汰赛",
+      "sport": "篮球",
+      "start": "2026-12-04",
+      "end": "2026-12-11",
+      "channels": ["UCWJ2lWNubArHWmf3FIHbfcQ"],
+      "match_any": ["nba cup"],
+      "note": "四分之一决赛 12/4–5，半决赛 12/8–9，冠军赛 12/11"
+    },
+    {
+      "name": "BWF World Tour Finals 2026",
+      "name_zh": "BWF 世界巡回赛总决赛",
+      "sport": "羽毛球",
+      "start": "2026-12-09",
+      "end": "2026-12-13",
+      "channels": ["UChh-akEbUM8_6ghGVnJd6cQ"],
+      "match_any": ["world tour finals"],
+      "note": "杭州"
+    },
+    {
+      "name": "WTT Finals Hong Kong 2026",
+      "name_zh": "WTT 总决赛",
+      "sport": "乒乓球",
+      "start": "2026-12-09",
+      "end": "2026-12-13",
+      "channels": ["UC9ckyA_A3MfXUa0ttxMoIZw"],
+      "match_any": ["wtt finals"],
+      "note": "香港启德主场馆"
+    },
+    {
+      "name": "Samsung Cup 2026",
+      "name_zh": "三星杯世界围棋大师赛",
+      "sport": "围棋",
+      "start": "2026-11-10",
+      "end": "2026-11-20",
+      "channels": [],
+      "match_any": [],
+      "note": "只记录，YouTube 上没有稳定的官方来源"
+    }
+  ]
+}

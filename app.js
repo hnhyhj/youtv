@@ -8,6 +8,10 @@ const BUILT_IN = [
   // FIFA 官方频道（UCpcTrCXblq78GZrTUTLWeBw）不允许在其他网站嵌入播放（错误 150），只能在 YouTube 上看，所以去掉了
 ];
 
+// “今日赛事”台：内容来自仓库里的 daily.json（GitHub 自动任务每 6 小时更新）。
+// kind: "videos" 表示这个台是一串视频 ID，而不是某个频道的上传列表。
+const DAILY = { name: "今日赛事", sub: "正在读取…", id: "daily", kind: "videos", ids: [], all: true };
+
 function load(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch (e) { return fallback; }
@@ -33,8 +37,10 @@ const titles = load("sportsTV.titles", {});   // 视频标题缓存：视频 ID 
 const durations = load("sportsTV.dur", {});   // 视频时长缓存：视频 ID → 秒数（时长不会变，存下来下次直接用）
 const guideLists = load("sportsTV.lists", {});   // 各台的视频列表：频道 ID → [视频 ID, ...]，存下来下次直接用
 
+const FIXED_COUNT = BUILT_IN.length + 1;   // 自带的台（含今日赛事）个数，后面的是自己添加的
+
 function buildChannels() {
-  channels = [];
+  channels = [DAILY];
   for (let i = 0; i < BUILT_IN.length; i++) channels.push(BUILT_IN[i]);
   for (let i = 0; i < custom.length; i++) channels.push(custom[i]);
 }
@@ -47,7 +53,7 @@ function renderList() {
   let html = "";
   for (let i = 0; i < channels.length; i++) {
     const c = channels[i];
-    const isCustom = i >= BUILT_IN.length;
+    const isCustom = i >= FIXED_COUNT;
     html += '<button class="ch' + (i === current ? ' on' : '') + '" data-i="' + i + '">' +
       '<span class="num">' + (i + 1) + '</span>' +
       '<span><b>' + esc(c.name) + '</b><small>' + esc(c.sub || "") + '</small></span>' +
@@ -82,11 +88,16 @@ function tune(i, pickVideoId) {
   save("sportsTV.lastChannel", c.id);
   blockedSkips = 0;
   renderGuide();
+  if (c.kind === "videos" && c.ids.length === 0) {
+    if (player) { player.destroy(); player = null; }
+    setNow("今日赛事列表还没有内容，请稍后再试，或者先看别的台。");
+    return;
+  }
   setNow("正在调台…（如果有广告，会先播广告）");
   let startIndex = 0;
   let startSec = 0;
   if (pending) {
-    const ids = guideLists[c.id] || [];
+    const ids = c.kind === "videos" ? c.ids : (guideLists[c.id] || []);
     for (let k = 0; k < ids.length; k++) {
       if (ids[k] === pending.videoId) {
         startIndex = k;
@@ -95,14 +106,20 @@ function tune(i, pickVideoId) {
       }
     }
   }
-  makePlayer(playlistId(c, usingAll), startIndex, startSec);
+  makePlayer(playerSource(c, usingAll), startIndex, startSec);
   setTimeout(refreshGuide, 3000);
+}
+
+// 一个台要播的内容：频道台是播放列表 ID（字符串），今日赛事台是一串视频 ID（数组）
+function playerSource(c, all) {
+  if (c.kind === "videos") return c.ids;
+  return playlistId(c, all);
 }
 
 // 每次换台都拆掉旧播放器、新建一个。
 // 不用 loadPlaylist：在同一个播放器里换列表时，列表内容不会真正换掉，还会继续放上一个台的视频。
 // startIndex / startSec：从列表的第几个视频、第几秒开始（不传就从第一个视频开头开始）
-function makePlayer(list, startIndex, startSec) {
+function makePlayer(source, startIndex, startSec) {
   if (player) {
     player.destroy();
     player = null;
@@ -117,16 +134,25 @@ function makePlayer(list, startIndex, startSec) {
   advancing = false;
   lastPollTime = -1;
   lastPollVid = "";
-  player = new YT.Player("player", {
-    playerVars: {
-      listType: "playlist", list: list,
-      index: startIndex || 0,     // 从第几个视频开始
-      start: startSec || 0,       // 第一个视频从第几秒开始
-      autoplay: 1, rel: 0, playsinline: 1,
-      loop: 1                     // 播完整个列表后从头再来
-    },
-    events: { onStateChange: onState, onError: onError }
-  });
+  const vars = {
+    start: startSec || 0,       // 第一个视频从第几秒开始
+    autoplay: 1, rel: 0, playsinline: 1,
+    loop: 1                     // 播完整个列表后从头再来
+  };
+  const options = { playerVars: vars, events: { onStateChange: onState, onError: onError } };
+  if (typeof source === "string") {
+    vars.listType = "playlist";
+    vars.list = source;
+    vars.index = startIndex || 0;   // 从第几个视频开始
+  } else {
+    // 一串视频 ID：从第 startIndex 个开始，转一圈排好；第一个放在 videoId，其余放在 playlist
+    const order = [];
+    const s0 = startIndex || 0;
+    for (let k = 0; k < source.length; k++) order.push(source[(s0 + k) % source.length]);
+    options.videoId = order[0];
+    vars.playlist = order.slice(1).join(",");
+  }
+  player = new YT.Player("player", options);
 }
 
 // 实测：广告期间，播放器状态是“还没开始”(-1)，但时间读数走的是广告的时间，视频 ID 却还是正片的。
@@ -167,7 +193,8 @@ function onPlaying() {
   // 调台后第一次放出视频：看列表最前面是不是没见过的新视频
   if (!checkedNewest) {
     checkedNewest = true;
-    const ids = player.getPlaylist() || [];
+    // 今日赛事台的播放器列表是从续看的位置转过一圈的，“最新的”要看原始列表
+    const ids = c.kind === "videos" ? c.ids : (player.getPlaylist() || []);
     if (ids.length > 0) {
       const known = load("sportsTV.newest." + c.id, null);
       const hasNew = known !== null && ids[0] !== known;
@@ -188,7 +215,7 @@ function onPlaying() {
     checkedNewest = false;
     lastVideoId = "";
     setNow("有新视频，正在切换到最新的…");
-    makePlayer(playlistId(c, usingAll));
+    makePlayer(playerSource(c, usingAll));
     return;
   }
   lastVideoId = data.video_id;
@@ -210,7 +237,8 @@ function onPlaying() {
         pending = null;
         if (freshAvailable) {
           freshAvailable = false;
-          save("sportsTV.newest." + c.id, ids[0]);
+          const all = c.kind === "videos" ? c.ids : ids;
+          save("sportsTV.newest." + c.id, all[0]);
         }
       } else {
         player.playVideoAt(k);
@@ -248,7 +276,8 @@ setInterval(function () {
   const data = player.getVideoData();
   // 广告期间播放器有时拿不到标题，就用节目表里存的标题
   const t = data ? (data.title || titles[data.video_id]) : "";
-  if (t) setNow(playingNow ? t : "即将播放：" + t);
+  const paused = player.getPlayerState() === YT.PlayerState.PAUSED;
+  if (t) setNow(playingNow ? t : (paused ? "已暂停：" + t : "即将播放：" + t));
   renderGuide();
 }, 2000);
 
@@ -433,15 +462,16 @@ function probeChannel(c, done) {
     document.body.appendChild(box);
   }
   const isCurrent = current >= 0 && channels[current].id === c.id;
-  const list = playlistId(c, isCurrent ? usingAll : c.all);
+  const isVideos = c.kind === "videos";
+  if (isVideos && c.ids.length === 0) { done(); return; }
   let waiter = null;
   let finished = false;
   let tries = 0;
 
-  const probe = new YT.Player("probe", {
+  const probeOptions = {
     width: 1,
     height: 1,
-    playerVars: { listType: "playlist", list: list, autoplay: 0, mute: 1 },
+    playerVars: { autoplay: 0, mute: 1 },
     events: {
       onReady: function () { waitForList(); },
       onStateChange: function (e) {
@@ -452,7 +482,14 @@ function probeChannel(c, done) {
         }
       }
     }
-  });
+  };
+  if (isVideos) {
+    probeOptions.videoId = c.ids[0];
+  } else {
+    probeOptions.playerVars.listType = "playlist";
+    probeOptions.playerVars.list = playlistId(c, isCurrent ? usingAll : c.all);
+  }
+  const probe = new YT.Player("probe", probeOptions);
 
   function finish() {
     if (finished) return;
@@ -462,7 +499,7 @@ function probeChannel(c, done) {
   }
 
   function waitForList() {
-    const ids = probe.getPlaylist ? probe.getPlaylist() : null;
+    const ids = isVideos ? c.ids : (probe.getPlaylist ? probe.getPlaylist() : null);
     if (ids && ids.length > 0) {
       guideLists[c.id] = ids;
       save("sportsTV.lists", guideLists);
@@ -565,7 +602,7 @@ document.getElementById("list").addEventListener("click", function (e) {
   const del = e.target.closest("[data-del]");
   if (del) {
     const i = Number(del.dataset.del);
-    custom.splice(i - BUILT_IN.length, 1);
+    custom.splice(i - FIXED_COUNT, 1);
     save("sportsTV.custom", custom);
     buildChannels();
     if (current === i) current = -1;
@@ -629,10 +666,38 @@ document.getElementById("addForm").addEventListener("submit", function (e) {
   e.target.reset();
 });
 
+// 读取今日赛事列表
+function loadDaily() {
+  fetch("daily.json?t=" + Date.now())
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d || !d.items) { DAILY.sub = "列表还没生成"; renderList(); return; }
+      const ids = [];
+      const sports = [];
+      for (let i = 0; i < d.items.length; i++) {
+        const it = d.items[i];
+        ids.push(it.id);
+        if (it.title && !titles[it.id]) titles[it.id] = it.title;
+        let have = false;
+        for (let j = 0; j < sports.length; j++) { if (sports[j] === it.sport) have = true; }
+        if (!have) sports.push(it.sport);
+      }
+      DAILY.ids = ids;
+      guideLists[DAILY.id] = ids;
+      if (ids.length === 0) DAILY.sub = "今天暂时没有视频";
+      else DAILY.sub = ids.length + " 个视频 · " + sports.join("、");
+      renderList();
+      if (current >= 0 && channels[current].id === DAILY.id) renderGuide();
+    })
+    .catch(function () { DAILY.sub = "列表读取失败"; renderList(); });
+}
+
 buildChannels();
 renderList();
 renderBlocked();
 renderGuide();
+loadDaily();
+setInterval(loadDaily, 30 * 60 * 1000);
 
 // 打开网页时：如果上次看过某个台，显示“继续观看”大按钮。
 // 浏览器一般不允许网页没被点击就自动带声音播放，所以需要点一下。
