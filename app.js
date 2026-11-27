@@ -4,7 +4,11 @@ const BUILT_IN = [
   { name: "NBA 篮球",   sub: "NBA 官方",          id: "UCWJ2lWNubArHWmf3FIHbfcQ", all: false },
   { name: "羽毛球",     sub: "BWF TV 世界羽联",    id: "UChh-akEbUM8_6ghGVnJd6cQ", all: false },
   { name: "网球",       sub: "Tennis TV（ATP）",   id: "UCbcxFkd6B9xUU54InHv4Tig", all: false },
-  { name: "奥运会",     sub: "Olympics 官方",      id: "UCTl3QQTvqHFjurroKxexy2Q", all: false }
+  { name: "女子网球",   sub: "WTA 官方",          id: "UCaBIVVpHjq6j3tSyxwTE-8Q", all: false },
+  { name: "乒乓球",     sub: "WTT 世界乒联赛事",   id: "UC9ckyA_A3MfXUa0ttxMoIZw", all: false },
+  { name: "国际篮球",   sub: "FIBA 国际篮联",      id: "UCtInrnU3QbWqFGsdKT1GZtg", all: false },
+  { name: "围棋",       sub: "K바둑 韩国围棋台",   id: "UC_K4QtbZcrc9Y_RmpeBJ9kw", all: false },
+  { name: "奥运会",    sub: "Olympics 官方",      id: "UCTl3QQTvqHFjurroKxexy2Q", all: false }
   // FIFA 官方频道（UCpcTrCXblq78GZrTUTLWeBw）不允许在其他网站嵌入播放（错误 150），只能在 YouTube 上看，所以去掉了
 ];
 

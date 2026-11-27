@@ -2,14 +2,88 @@
   "updated": "2026-11-27",
   "about": "赛事日历：由 Claude 每周更新。每日列表脚本按这里的赛事去官方频道找当天的集锦和全场回放。",
   "words": {
-    "include_any": ["highlights", "full match", "full game", "extended", "final", "vs", " v "],
-    "exclude_any": ["press conference", "interview", "behind the scenes", "trailer", "#shorts", "reaction", "preview", "draw ceremony", "podcast", "mic'd up"]
+    "include_any": [
+      "highlights",
+      "full match",
+      "full game",
+      "extended",
+      "final",
+      "vs",
+      " v "
+    ],
+    "exclude_any": [
+      "press conference",
+      "interview",
+      "behind the scenes",
+      "trailer",
+      "#shorts",
+      "reaction",
+      "preview",
+      "draw ceremony",
+      "podcast",
+      "mic'd up"
+    ]
   },
   "defaults": [
-    { "sport": "篮球", "channel": "UCWJ2lWNubArHWmf3FIHbfcQ", "channel_name": "NBA", "include_any": ["full game highlights"] },
-    { "sport": "网球", "channel": "UCbcxFkd6B9xUU54InHv4Tig", "channel_name": "Tennis TV", "include_any": ["highlights"] },
-    { "sport": "羽毛球", "channel": "UChh-akEbUM8_6ghGVnJd6cQ", "channel_name": "BWF TV", "include_any": ["highlights"] },
-    { "sport": "乒乓球", "channel": "UC9ckyA_A3MfXUa0ttxMoIZw", "channel_name": "WTT", "include_any": ["highlights"] }
+    {
+      "sport": "篮球",
+      "channel": "UCWJ2lWNubArHWmf3FIHbfcQ",
+      "channel_name": "NBA",
+      "include_any": [
+        "full game highlights"
+      ]
+    },
+    {
+      "sport": "网球",
+      "channel": "UCbcxFkd6B9xUU54InHv4Tig",
+      "channel_name": "Tennis TV",
+      "include_any": [
+        "highlights"
+      ]
+    },
+    {
+      "sport": "羽毛球",
+      "channel": "UChh-akEbUM8_6ghGVnJd6cQ",
+      "channel_name": "BWF TV",
+      "include_any": [
+        "highlights"
+      ]
+    },
+    {
+      "sport": "乒乓球",
+      "channel": "UC9ckyA_A3MfXUa0ttxMoIZw",
+      "channel_name": "WTT",
+      "include_any": [
+        "highlights"
+      ]
+    },
+    {
+      "sport": "网球",
+      "channel": "UCaBIVVpHjq6j3tSyxwTE-8Q",
+      "channel_name": "WTA",
+      "include_any": [
+        "highlights",
+        " vs"
+      ]
+    },
+    {
+      "sport": "篮球",
+      "channel": "UCtInrnU3QbWqFGsdKT1GZtg",
+      "channel_name": "FIBA",
+      "include_any": [
+        "highlights"
+      ]
+    },
+    {
+      "sport": "围棋",
+      "channel": "UC_K4QtbZcrc9Y_RmpeBJ9kw",
+      "channel_name": "K바둑",
+      "include_any": [
+        "요약",
+        "결승",
+        "세계"
+      ]
+    }
   ],
   "events": [
     {
@@ -19,8 +93,10 @@
       "start": "2026-11-24",
       "end": "2026-11-29",
       "channels": [],
-      "match_any": ["davis cup"],
-      "note": "官方 YouTube 频道待确认，暂无视频来源"
+      "match_any": [
+        "davis cup"
+      ],
+      "note": "没有找到官方 YouTube 频道"
     },
     {
       "name": "Emirates NBA Cup Knockout Rounds",
@@ -28,8 +104,12 @@
       "sport": "篮球",
       "start": "2026-12-04",
       "end": "2026-12-11",
-      "channels": ["UCWJ2lWNubArHWmf3FIHbfcQ"],
-      "match_any": ["nba cup"],
+      "channels": [
+        "UCWJ2lWNubArHWmf3FIHbfcQ"
+      ],
+      "match_any": [
+        "nba cup"
+      ],
       "note": "四分之一决赛 12/4–5，半决赛 12/8–9，冠军赛 12/11"
     },
     {
@@ -38,8 +118,12 @@
       "sport": "羽毛球",
       "start": "2026-12-09",
       "end": "2026-12-13",
-      "channels": ["UChh-akEbUM8_6ghGVnJd6cQ"],
-      "match_any": ["world tour finals"],
+      "channels": [
+        "UChh-akEbUM8_6ghGVnJd6cQ"
+      ],
+      "match_any": [
+        "world tour finals"
+      ],
       "note": "杭州"
     },
     {
@@ -48,8 +132,12 @@
       "sport": "乒乓球",
       "start": "2026-12-09",
       "end": "2026-12-13",
-      "channels": ["UC9ckyA_A3MfXUa0ttxMoIZw"],
-      "match_any": ["wtt finals"],
+      "channels": [
+        "UC9ckyA_A3MfXUa0ttxMoIZw"
+      ],
+      "match_any": [
+        "wtt finals"
+      ],
       "note": "香港启德主场馆"
     },
     {
@@ -58,9 +146,42 @@
       "sport": "围棋",
       "start": "2026-11-10",
       "end": "2026-11-20",
-      "channels": [],
-      "match_any": [],
-      "note": "只记录，YouTube 上没有稳定的官方来源"
+      "channels": [
+        "UC_K4QtbZcrc9Y_RmpeBJ9kw"
+      ],
+      "match_any": [
+        "삼성"
+      ],
+      "note": "K바둑 频道有韩语解说和对局"
     }
-  ]
+  ],
+  "sources": {
+    "about": "已测试可以嵌入播放的官方频道，赛事期间写进对应赛事的 channels",
+    "网球": {
+      "Tennis TV": "UCbcxFkd6B9xUU54InHv4Tig",
+      "WTA": "UCaBIVVpHjq6j3tSyxwTE-8Q",
+      "Australian Open": "UCeTKJSW1NTAkf27nNmjWt5A",
+      "Roland-Garros": "UCF3K1Jf8hjFW8qliei8fQ3A",
+      "Wimbledon": "UCNa8NxMgSm7m4Ii9d4QGk1Q",
+      "US Open": "UCXbboag48Qlr78zzz6SkzkQ",
+      "Billie Jean King Cup": "UCDnJCm5-6VfmJ-HjJ8u0lVg"
+    },
+    "篮球": {
+      "NBA": "UCWJ2lWNubArHWmf3FIHbfcQ",
+      "FIBA": "UCtInrnU3QbWqFGsdKT1GZtg",
+      "House of Highlights": "UCqQo7ewe87aYAe7ub5UqXMw"
+    },
+    "羽毛球": {
+      "BWF TV": "UChh-akEbUM8_6ghGVnJd6cQ",
+      "Badminton Asia": "UCVWheF3rns7z5jNS2luqOyQ"
+    },
+    "乒乓球": {
+      "WTT": "UC9ckyA_A3MfXUa0ttxMoIZw",
+      "ITTF": "UC2ySPiV4DZp58qQ4KES2o1g"
+    },
+    "围棋": {
+      "K바둑": "UC_K4QtbZcrc9Y_RmpeBJ9kw"
+    },
+    "不能用": "ESPN、NBC Sports 不允许嵌入；戴维斯杯没有找到官方频道"
+  }
 }
