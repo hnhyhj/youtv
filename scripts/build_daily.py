@@ -19,6 +19,7 @@ RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id="
 NS = {
     "atom": "http://www.w3.org/2005/Atom",
     "yt": "http://www.youtube.com/xml/schemas/2015",
+    "media": "http://search.yahoo.com/mrss/",
 }
 MAX_ITEMS = 40          # 列表最多放多少个视频
 DAYS_AFTER_END = 2      # 赛事结束后还保留几天
@@ -37,6 +38,10 @@ def read_channel(channel_id):
         title = entry.find("atom:title", NS).text or ""
         published = entry.find("atom:published", NS).text
         link = entry.find("atom:link", NS).get("href", "")
+        # 预告的直播（还没开播）播放次数是 0，放进节目单也播不了，跳过
+        stats = entry.find("media:group/media:community/media:statistics", NS)
+        if stats is not None and stats.get("views") == "0":
+            continue
         videos.append({
             "id": vid,
             "title": title,
