@@ -21,7 +21,7 @@ NS = {
 }
 MAX_ITEMS = 40          # 列表最多放多少个视频
 DAYS_AFTER_END = 2      # 赛事结束后还保留几天
-FALLBACK_HOURS = 48     # 没有赛事时，取最近多少小时的视频
+FALLBACK_HOURS = 72     # 没有赛事时，取最近多少小时的视频
 FALLBACK_PER_CHANNEL = 6
 
 
@@ -60,6 +60,13 @@ def looks_like_match(title, words):
     return has_any(title, words["include_any"])
 
 
+def same_game_key(title):
+    """同一场比赛的普通版和加长版，去掉 EXTENDED 字样后标题一样"""
+    t = title.lower()
+    t = t.replace("extended:", "").replace("extended", "")
+    return " ".join(t.split())
+
+
 def kind_of(title):
     t = title.lower()
     if "full match" in t or ("full game" in t and "highlights" not in t):
@@ -86,7 +93,8 @@ def main():
         return cache[cid]
 
     items = []
-    seen = set()
+    seen = set()      # 已经收进来的视频 ID
+    games = set()     # 已经收进来的比赛（同一场只留一个版本）
     active = []
 
     # 正在进行（或刚结束两天内）的赛事
@@ -108,6 +116,10 @@ def main():
                 pub = datetime.fromisoformat(v["published"].replace("Z", "+00:00"))
                 if pub.date() < start:
                     continue
+                key = same_game_key(v["title"])
+                if key in games:
+                    continue
+                games.add(key)
                 seen.add(v["id"])
                 items.append({
                     "id": v["id"],
@@ -135,6 +147,10 @@ def main():
                     continue
                 if not has_any(v["title"], d["include_any"]):
                     continue
+                key = same_game_key(v["title"])
+                if key in games:
+                    continue
+                games.add(key)
                 seen.add(v["id"])
                 count = count + 1
                 items.append({

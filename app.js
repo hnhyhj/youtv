@@ -145,12 +145,14 @@ function makePlayer(source, startIndex, startSec) {
     vars.list = source;
     vars.index = startIndex || 0;   // 从第几个视频开始
   } else {
-    // 一串视频 ID：从第 startIndex 个开始，转一圈排好；第一个放在 videoId，其余放在 playlist
+    // 一串视频 ID：从第 startIndex 个开始，转一圈排好。
+    // 实测：YouTube 只认 playlist 参数里的视频，单独指定的 videoId 不算进列表，
+    // 所以 playlist 里要放全部视频（包括第一个），videoId 也填第一个。
     const order = [];
     const s0 = startIndex || 0;
     for (let k = 0; k < source.length; k++) order.push(source[(s0 + k) % source.length]);
     options.videoId = order[0];
-    vars.playlist = order.slice(1).join(",");
+    vars.playlist = order.join(",");
   }
   player = new YT.Player("player", options);
 }
