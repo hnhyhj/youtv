@@ -1,4 +1,4 @@
-# 每日赛事列表：每 6 小时运行一次，生成 daily.json，有变化才提交
+# 每日赛事列表：每 6 小时运行一次，生成 daily.json 和 mixes.json，有变化才提交
 name: 每日赛事列表
 
 on:
@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 生成 daily.json
+      - name: 生成 daily.json 和 mixes.json
         run: python scripts/build_daily.py
 
       - name: 有变化就提交
@@ -27,6 +27,7 @@ jobs:
           git config user.name "youtv-bot"
           git config user.email "youtv-bot@users.noreply.github.com"
           git add daily.json
+          if [ -f mixes.json ]; then git add mixes.json; fi
           if git diff --cached --quiet; then
             echo "列表没有变化"
           else

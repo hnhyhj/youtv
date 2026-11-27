@@ -7,7 +7,7 @@ const BUILT_IN = [
   { name: "女子网球",   sub: "WTA 官方",          id: "UCaBIVVpHjq6j3tSyxwTE-8Q", all: false },
   { name: "乒乓球",     sub: "WTT 世界乒联赛事",   id: "UC9ckyA_A3MfXUa0ttxMoIZw", all: false },
   { name: "国际篮球",   sub: "FIBA 国际篮联",      id: "UCtInrnU3QbWqFGsdKT1GZtg", all: false },
-  { name: "围棋",       sub: "K바둑 韩国围棋台",   id: "UC_K4QtbZcrc9Y_RmpeBJ9kw", all: false },
+  { name: "围棋",       sub: "明玥谈棋 + 海峰棋院", id: "weiqi", kind: "videos", mix: true, ids: [], all: true },
   { name: "奥运会",    sub: "Olympics 官方",      id: "UCTl3QQTvqHFjurroKxexy2Q", all: false }
   // FIFA 官方频道（UCpcTrCXblq78GZrTUTLWeBw）不允许在其他网站嵌入播放（错误 150），只能在 YouTube 上看，所以去掉了
 ];
@@ -94,7 +94,7 @@ function tune(i, pickVideoId) {
   renderGuide();
   if (c.kind === "videos" && c.ids.length === 0) {
     if (player) { player.destroy(); player = null; }
-    setNow("今日赛事列表还没有内容，请稍后再试，或者先看别的台。");
+    setNow(c.name + "的节目单还没读到，请稍等，或者先看别的台。");
     return;
   }
   setNow("正在调台…（如果有广告，会先播广告）");
@@ -682,9 +682,39 @@ function loadDaily() {
       if (ids.length === 0) DAILY.sub = "今天暂时没有视频";
       else DAILY.sub = ids.length + " 个视频 · " + sports.join("、");
       renderList();
-      if (current >= 0 && channels[current].id === DAILY.id) renderGuide();
+      afterListLoaded(DAILY);
     })
     .catch(function () { DAILY.sub = "列表读取失败"; renderList(); });
+}
+
+// 合成台（例如“围棋”= 明玥谈棋 + 海峰棋院）：内容来自 mixes.json，也由 GitHub 自动任务更新
+function loadMixes() {
+  fetch("mixes.json?t=" + Date.now())
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d) return;
+      for (let i = 0; i < BUILT_IN.length; i++) {
+        const c = BUILT_IN[i];
+        if (!c.mix || !d[c.id]) continue;
+        const ids = [];
+        const items = d[c.id].items || [];
+        for (let j = 0; j < items.length; j++) {
+          ids.push(items[j].id);
+          if (items[j].title && !titles[items[j].id]) titles[items[j].id] = items[j].title;
+        }
+        c.ids = ids;
+        guideLists[c.id] = ids;
+        afterListLoaded(c);
+      }
+    })
+    .catch(function () {});
+}
+
+// 列表读到了：正在看这个台的话，刷新节目表；之前因为没内容没开播，就现在开播
+function afterListLoaded(c) {
+  if (current < 0 || channels[current] !== c) return;
+  if (!player && c.ids.length > 0) tune(current);
+  else renderGuide();
 }
 
 buildChannels();
@@ -692,7 +722,9 @@ renderList();
 renderBlocked();
 renderGuide();
 loadDaily();
+loadMixes();
 setInterval(loadDaily, 30 * 60 * 1000);
+setInterval(loadMixes, 30 * 60 * 1000);
 
 // 打开网页时：如果上次看过某个台，显示“继续观看”大按钮。
 // 浏览器一般不允许网页没被点击就自动带声音播放，所以需要点一下。

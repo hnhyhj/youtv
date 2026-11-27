@@ -76,12 +76,14 @@
     },
     {
       "sport": "围棋",
-      "channel": "UC_K4QtbZcrc9Y_RmpeBJ9kw",
-      "channel_name": "K바둑",
+      "channel": "UCXC_VzROvw4AjQtmDkaldXQ",
+      "channel_name": "明玥谈棋",
       "include_any": [
-        "요약",
-        "결승",
-        "세계"
+        "杯",
+        "决赛",
+        "世界",
+        "围甲",
+        "名局"
       ]
     }
   ],
@@ -147,12 +149,12 @@
       "start": "2026-11-10",
       "end": "2026-11-20",
       "channels": [
-        "UC_K4QtbZcrc9Y_RmpeBJ9kw"
+        "UCXC_VzROvw4AjQtmDkaldXQ"
       ],
       "match_any": [
-        "삼성"
+        "三星杯"
       ],
-      "note": "K바둑 频道有韩语解说和对局"
+      "note": "明玥谈棋有中文讲解"
     }
   ],
   "sources": {
@@ -180,8 +182,25 @@
       "ITTF": "UC2ySPiV4DZp58qQ4KES2o1g"
     },
     "围棋": {
-      "K바둑": "UC_K4QtbZcrc9Y_RmpeBJ9kw"
+      "明玥谈棋": "UCXC_VzROvw4AjQtmDkaldXQ",
+      "海峰棋院": "UCfSuJoN6it1dUmIc4IUxUxg"
     },
-    "不能用": "ESPN、NBC Sports 不允许嵌入；戴维斯杯没有找到官方频道"
-  }
+    "不能用": "ESPN、NBC Sports 不允许嵌入；戴维斯杯没有找到官方频道；WeiqiTube 是搬运的电视节目，不用"
+  },
+  "mixes": [
+    {
+      "id": "weiqi",
+      "name": "围棋",
+      "channels": [
+        {
+          "channel": "UCXC_VzROvw4AjQtmDkaldXQ",
+          "channel_name": "明玥谈棋"
+        },
+        {
+          "channel": "UCfSuJoN6it1dUmIc4IUxUxg",
+          "channel_name": "海峰棋院"
+        }
+      ]
+    }
+  ]
 }

@@ -6,6 +6,7 @@
 # 3. 去这些赛事的官方 YouTube 频道读“最新视频清单”（RSS，最近 15 个视频）
 # 4. 留下标题里有赛事名称、并且是集锦或全场回放的视频
 # 5. 没有正在进行的赛事时，改为各官方频道最近两天的集锦
+# 6. 另外把几个频道合成一个台（例如“围棋”= 明玥谈棋 + 海峰棋院），写进 mixes.json
 #
 # 只用 Python 自带的库，不需要 API key。
 
@@ -91,6 +92,8 @@ def main():
                 print("读取频道失败", cid, e)
                 cache[cid] = []
         return cache[cid]
+
+    build_mixes(cal, channel_videos)
 
     items = []
     seen = set()      # 已经收进来的视频 ID
@@ -184,6 +187,40 @@ def main():
     with open("daily.json", "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
     print("赛事：", active, "视频数：", len(items))
+
+
+def build_mixes(cal, channel_videos):
+    """把几个频道的最新视频合在一起，按上传时间排，最新的在前"""
+    out = {}
+    for mix in cal.get("mixes", []):
+        items = []
+        for ch in mix["channels"]:
+            for v in channel_videos(ch["channel"]):
+                if v["is_short"]:
+                    continue
+                items.append({
+                    "id": v["id"],
+                    "title": v["title"],
+                    "from": ch["channel_name"],
+                    "published": v["published"],
+                })
+        items.sort(key=lambda x: x["published"], reverse=True)
+        out[mix["id"]] = {"name": mix["name"], "items": items}
+    # 某个频道这次没读到（items 变少很多），就不覆盖旧文件
+    try:
+        with open("mixes.json", encoding="utf-8") as f:
+            old = json.load(f)
+    except (OSError, ValueError):
+        old = {}
+    for k in list(out.keys()):
+        if len(out[k]["items"]) == 0 and k in old:
+            out[k] = old[k]
+    if old == out:
+        print("合成台没有变化")
+        return
+    with open("mixes.json", "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    print("合成台：", {k: len(v["items"]) for k, v in out.items()})
 
 
 if __name__ == "__main__":
