@@ -300,61 +300,35 @@ function isBlocked(id) {
 }
 
 // ================= 节目表 =================
-// 每一行是一个台，横轴是时间，格子宽度按视频时长。
-// 当前正在看的台：按播放器的真实进度画；
-// 其他台：画的是“现在调过去会看到什么”（有没看完的就从没看完的接着，否则从最新的开始）。
+// 一个竖着的列表：当前台的视频按播放顺序排下来，正在播的那个高亮。
+// 列表可以上下滚动，往上看是播过的，往下看是接下来的，点哪个就播哪个。
 
-const GUIDE_BEFORE = 10 * 60;      // 红线左边显示 10 分钟
-const PX_PER_MIN = 10;             // 每分钟画 10 像素，短视频的标题也能看到几个字
-const DEFAULT_DUR = 10 * 60;       // 还不知道时长的视频，先按 10 分钟画
+const LIST_BEFORE = 10;   // 当前视频前面显示 10 个
+const LIST_AFTER = 40;    // 后面显示 40 个
+let guideSig = "";        // 内容没变就不重画，免得打断正在滚动的列表
+let guideCurId = "";
+const DEFAULT_DUR = 10 * 60;   // 读取时长时，还不知道时长的视频先按 10 分钟算      // 换了正在播的视频，才把它滚到看得见的地方
 
-function twoDigits(n) { return n < 10 ? "0" + n : "" + n; }
-function clockText(sec) {
-  const d = new Date(sec * 1000);
-  return twoDigits(d.getHours()) + ":" + twoDigits(d.getMinutes());
+function durText(sec) {
+  if (!sec) return "";
+  sec = Math.round(sec);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s2 = sec % 60;
+  if (h > 0) return h + ":" + twoDigits(m) + ":" + twoDigits(s2);
+  return m + ":" + twoDigits(s2);
 }
+function twoDigits(n) { return n < 10 ? "0" + n : "" + n; }
 
-// 某个台从哪个视频、哪一秒开始算
+// 某个台从哪个视频开始算（还没开播时用）
 function startPointFor(c, ids) {
   const pos = load("sportsTV.pos." + c.id, null);
   if (pos) {
     for (let k = 0; k < ids.length; k++) {
-      if (ids[k] === pos.videoId) return { k: k, time: pos.time };
+      if (ids[k] === pos.videoId) return k;
     }
   }
-  return { k: 0, time: 0 };
-}
-
-// 算出某个台在时间窗口里的节目：[{k, id, start, end}]
-function rowPrograms(i, winStart, winEnd, now) {
-  const c = channels[i];
-  let ids, k, begin;
-  if (i === current && player && player.getPlaylist && player.getPlaylist()) {
-    ids = player.getPlaylist();
-    k = player.getPlaylistIndex();
-    if (k < 0) k = 0;
-    const t = player.getCurrentTime ? player.getCurrentTime() : 0;
-    begin = t > 0 ? now - t : now;
-  } else {
-    ids = guideLists[c.id];
-    if (!ids || ids.length === 0) return null;
-    const sp = startPointFor(c, ids);
-    k = sp.k;
-    begin = now - sp.time;
-  }
-  const out = [];
-  let t = begin;
-  for (let step = 0; step < ids.length && t < winEnd && out.length < 40; step++) {
-    const kk = (k + step) % ids.length;
-    const id = ids[kk];
-    if (isBlocked(id)) continue;
-    let d = durations[id];
-    if (!d && i === current && step === 0 && player && player.getDuration) d = Math.round(player.getDuration());
-    if (!d) d = DEFAULT_DUR;
-    out.push({ k: kk, id: id, start: t, end: t + d });
-    t = t + d;
-  }
-  return out;
+  return 0;
 }
 
 function renderGuide() {
@@ -362,54 +336,69 @@ function renderGuide() {
   const titleBox = document.getElementById("guideTitle");
   if (current < 0) {
     titleBox.textContent = "节目表";
-    box.innerHTML = '<p class="hint">选一个频道后，这里显示这个台接下来的节目。</p>';
+    box.innerHTML = '<p class="hint">选一个频道后，这里列出这个台的节目，点哪个就播哪个。</p>';
+    guideSig = "";
     return;
   }
-  titleBox.textContent = "节目表：" + channels[current].name;
+  const c = channels[current];
+  titleBox.textContent = "节目表：" + c.name;
 
-  const now = Date.now() / 1000;
-  // 屏幕越宽，显示的时间越长：最少 1 小时，最多 3 小时
-  let minutes = Math.floor(box.clientWidth / PX_PER_MIN);
-  if (minutes < 60) minutes = 60;
-  if (minutes > 180) minutes = 180;
-  const span = minutes * 60;
-  const winStart = now - GUIDE_BEFORE;
-  const winEnd = winStart + span;
-  function pct(sec) { return ((sec - winStart) / span * 100).toFixed(3) + "%"; }
-
-  // 表头：每半小时一个刻度
-  let head = '<div class="g-head">';
-  let tick = Math.ceil(winStart / 1800) * 1800;
-  while (tick < winEnd) {
-    head += '<div class="g-time" style="left:' + pct(tick) + '">' + clockText(tick) + '</div>';
-    tick = tick + 1800;
-  }
-  head += '</div>';
-
-  let line = '<div class="g-line">';
-  const missing = [];
-  const progs = rowPrograms(current, winStart, winEnd, now);
-  if (!progs) {
-    line += '<div class="g-wait">正在读取节目…</div>';
+  let ids = null, idx = 0, fromPlayer = false;
+  if (player && player.getPlaylist && player.getPlaylist()) {
+    ids = player.getPlaylist();
+    idx = player.getPlaylistIndex();
+    if (idx < 0) idx = 0;
+    fromPlayer = true;
   } else {
-    for (let j = 0; j < progs.length; j++) {
-      const p = progs[j];
-      const left = Math.max(p.start, winStart);
-      const right = Math.min(p.end, winEnd);
-      if (right <= left) continue;
-      const title = titles[p.id];
-      if (title === undefined) missing.push(p.id);
-      const isCur = p.start <= now && now < p.end;
-      line += '<button class="g-prog' + (isCur ? ' cur' : '') + '" data-k="' + p.k + '"' +
-        ' style="left:' + pct(left) + ';width:calc(' + pct(right) + ' - ' + pct(left) + ' - 4px)"' +
-        ' title="' + esc(title || "") + '">' +
-        '<small>' + (isCur ? '正在播放' : clockText(p.start)) + '</small>' +
-        '<span>' + esc(title || "…") + '</span></button>';
-    }
+    ids = c.kind === "videos" ? c.ids : guideLists[c.id];
+    if (ids && ids.length) idx = startPointFor(c, ids);
   }
-  line += '<div class="g-now" style="left:' + pct(now) + '"></div></div>';
-  box.innerHTML = '<div class="g-grid">' + head + line + '</div>';
+  if (!ids || ids.length === 0) {
+    box.innerHTML = '<p class="hint">正在读取节目…</p>';
+    guideSig = "";
+    return;
+  }
+
+  const playing = fromPlayer && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING;
+  let from = 0, to = ids.length;
+  if (ids.length > LIST_BEFORE + LIST_AFTER + 1) {
+    from = Math.max(0, idx - LIST_BEFORE);
+    to = Math.min(ids.length, idx + LIST_AFTER + 1);
+  }
+
+  let html = "";
+  let sig = c.id + "|" + idx + "|" + playing + "|" + from + "|" + to;
+  const missing = [];
+  for (let k = from; k < to; k++) {
+    const id = ids[k];
+    if (isBlocked(id) && k !== idx) continue;
+    const title = titles[id];
+    if (title === undefined) missing.push(id);
+    let d = durations[id];
+    if (!d && k === idx && fromPlayer && player.getDuration) d = player.getDuration();
+    const isCur = k === idx;
+    const label = isCur ? (fromPlayer ? (playing ? "正在播放" : "即将播放（有广告会先播广告）") : "上次看到这里") : "";
+    sig += "|" + id + ":" + (title || "") + ":" + Math.round(d || 0);
+    html += '<button class="item' + (isCur ? ' on' : '') + '" data-k="' + k + '">' +
+      '<img src="https://i.ytimg.com/vi/' + esc(id) + '/mqdefault.jpg" alt="" loading="lazy">' +
+      '<span>' + (label ? '<small>' + label + '</small>' : '') +
+      esc(title || "（正在读取标题…）") +
+      (d ? '<em>' + durText(d) + '</em>' : '') + '</span></button>';
+  }
   loadTitles(missing);
+  if (sig === guideSig) return;
+  guideSig = sig;
+
+  const keep = box.scrollTop;
+  box.innerHTML = html;
+  const curId = c.id + ":" + ids[idx];
+  if (curId !== guideCurId) {
+    guideCurId = curId;
+    const on = box.querySelector(".item.on");
+    if (on) box.scrollTop = Math.max(0, on.offsetTop - 8);
+  } else {
+    box.scrollTop = keep;
+  }
 }
 
 // 向 YouTube 的公开接口要标题，拿到后刷新节目表，并存下来下次直接用
@@ -635,7 +624,7 @@ document.getElementById("block").onclick = function () {
   player.nextVideo();
 };
 document.getElementById("guide").addEventListener("click", function (e) {
-  const item = e.target.closest(".g-prog");
+  const item = e.target.closest(".item");
   if (!item || !player || !player.playVideoAt) return;
   pending = null;
   freshAvailable = false;   // 自己选的节目，不要被“切到最新”打断
