@@ -280,8 +280,8 @@ setInterval(function () {
   shownIdx = idx;
   shownPlaying = playingNow;
   const data = player.getVideoData();
-  // 广告期间播放器有时拿不到标题，就用节目表里存的标题
-  const t = data ? (data.title || titles[data.video_id]) : "";
+  // 广告期间播放器给的标题有时还是上一个视频的，所以先用节目表里按视频 ID 存的标题
+  const t = data ? (titles[data.video_id] || data.title) : "";
   const paused = player.getPlayerState() === YT.PlayerState.PAUSED;
   if (t) setNow(playingNow ? t : (paused ? "已暂停：" + t : "即将播放：" + t));
   renderGuide();
@@ -289,7 +289,7 @@ setInterval(function () {
 
 window.addEventListener("resize", function () { renderGuide(); });
 
-// 时间在走，红线和节目格子每 30 秒重画一次
+// 每 30 秒再检查一次节目表（内容没变不会重画）
 setInterval(function () { renderGuide(); }, 30000);
 
 function isBlocked(id) {
