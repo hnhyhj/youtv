@@ -343,7 +343,7 @@ function rowPrograms(i, winStart, winEnd, now) {
     const id = ids[kk];
     if (isBlocked(id)) continue;
     let d = durations[id];
-    if (!d && i === current && step === 0 && player.getDuration) d = Math.round(player.getDuration());
+    if (!d && i === current && step === 0 && player && player.getDuration) d = Math.round(player.getDuration());
     if (!d) d = DEFAULT_DUR;
     out.push({ k: kk, id: id, start: t, end: t + d });
     t = t + d;
