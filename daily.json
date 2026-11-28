@@ -1,10 +1,18 @@
 {
-  "date": "2026-11-27",
-  "generated": "2026-11-27T23:41:02Z",
+  "date": "2026-11-28",
+  "generated": "2026-11-28T01:28:18Z",
   "events": [
     "戴维斯杯八强赛"
   ],
   "items": [
+    {
+      "id": "7dvG5BybO-s",
+      "title": "Uruguay 🇺🇾 v Canada 🇨🇦 | Extended Highlights | FIBA Basketball World Cup 2027 Americas Qualifiers",
+      "sport": "篮球",
+      "event": "FIBA 最新集锦",
+      "kind": "集锦",
+      "published": "2026-11-28T00:10:22+00:00"
+    },
     {
       "id": "5koapbRR-Q8",
       "title": "Poland 🇵🇱 v Croatia 🇭🇷 | Highlights | FIBA Basketball World Cup 2027 European Qualifiers",
@@ -46,14 +54,6 @@
       "published": "2026-11-27T21:30:22+00:00"
     },
     {
-      "id": "7-n_OdAc9bw",
-      "title": "ISL 🇮🇸 v BIH 🇧🇦 | Extended Highlights | FIBA Basketball World Cup 2027 European Qualifiers",
-      "sport": "篮球",
-      "event": "FIBA 最新集锦",
-      "kind": "集锦",
-      "published": "2026-11-27T21:30:16+00:00"
-    },
-    {
       "id": "_b1IJzrGEzo",
       "title": "An Impressive Performance 🤩 Leylah Fernandez vs. Talia Gibson 2026 Singapore Final | WTA Full Match",
       "sport": "网球",
@@ -68,14 +68,6 @@
       "event": "明玥谈棋 最新集锦",
       "kind": "集锦",
       "published": "2026-11-27T10:00:31+00:00"
-    },
-    {
-      "id": "5EaY-W4T8O8",
-      "title": "EXTENDED: SPURS at TRAIL BLAZERS | EMIRATES NBA CUP 🏆 | FULL GAME HIGHLIGHTS | November 25, 2026",
-      "sport": "篮球",
-      "event": "NBA 最新集锦",
-      "kind": "集锦",
-      "published": "2026-11-26T06:33:10+00:00"
     },
     {
       "id": "YTektcFCcYQ",
